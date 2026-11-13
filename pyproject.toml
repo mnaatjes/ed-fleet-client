@@ -4,7 +4,14 @@ version = "0.1.0"
 description = "Unified reactive client SDK and state facade for Elite Dangerous telemetry services"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "ed-models",
+    "ed-transport",
+]
+
+[tool.uv.sources]
+ed-models = { git = "https://github.com/mnaatjes/ed-models.git", rev = "v0.2.1" }
+ed-transport = { git = "https://github.com/mnaatjes/ed-transport.git", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]
@@ -17,6 +24,7 @@ dev = [
 "pytest-archon>=0.0.6",
 # Quality Gates & Testing
 "pytest>=8.0.0",
+"pytest-asyncio>=0.23.0",
 "pytest-cov>=5.0.0",
 "ruff>=0.7.3",
 "mypy>=1.13.0",
@@ -32,3 +40,21 @@ select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ed_models.*",
+    "ed_models",
+    "ed_transport.*",
+    "ed_transport",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ed_fleet_client.core.domain.services.models"
+disallow_subclassing_any = false
