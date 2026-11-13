@@ -25,3 +25,4 @@ Governed by Markdown Architectural Decision Records (MADR 3.0).
 | :---: | :--- | :---: | :---: | :--- |
 | [0001](0001_high_level_architecture.md) | High-Level Hexagonal Architecture & Subsystem Integration | **Accepted** | 2026-11-13 | — |
 | [0002](0002_scope_boundaries_and_automated_enforcement.md) | System Scope, Boundaries, and Multi-Tier Automated Enforcement | **Accepted** | 2026-11-13 | — |
+| [0003](0003_submodule_migration_and_hexagonal_realignment.md) | Submodule Migration and Hexagonal Architectural Realignment Plan | **Accepted** | 2026-11-13 | — |
