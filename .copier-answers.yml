@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier
+_commit: v0.1.6
+_src_path: /home/michael/src/github.com/mnaatjes/python-hexagonal-template
+author_email: michael.naatjes87@gmail.com
+author_name: Michael Naatjes
+include_architecture_governance: true
+package_name: ed_fleet_client
+project_description: Unified reactive client SDK and state facade for Elite Dangerous
+    telemetry services
+project_name: ed-fleet-client
+project_slug: ed-fleet-client
+python_version: '3.13'
