@@ -64,5 +64,7 @@ We standardize `EliteDangerousClient` (`src/ed_fleet_client/adapters/driving/fac
 ## 4. Diataxis Documentation Plan
 
 Implementation of this ADR must include living user-facing documentation under `docs/` following the Diataxis framework:
+* **`docs/tutorials/getting_started_with_ed_fleet_client.md`:** Step-by-step tutorial showing users how to start a new Python project, launch or verify an `ed-telemetry` API instance, connect using `async with create_client()`, register `@client.on(...)` event listeners, and read reducer state (`client.location`, `client.ship`, `client.session`).
+* **`docs/how-to/connect_to_ed_telemetry.md`:** Practical guide for configuring `TelemetryConnectionConfig` (host, port, API key, timeouts) and connecting to an independent `ed-telemetry` server.
+* **`docs/how-to/subscribe_to_telemetry_events.md`:** Practical guide for registering `@client.on(...)` listeners, managing `Subscription` tokens, reading high-frequency state projections, and fetching companion snapshots.
 * **`docs/reference/client_facade.md`:** Complete API reference for `EliteDangerousClient`, `create_client()`, state projections (`ClientStateProjection`, `LocationProjection`, `SessionProjection`, `ShipProjection`), and domain service properties.
-* **`docs/how-to/subscribe_to_telemetry_events.md`:** Step-by-step guide for connecting with `async with create_client()`, registering `@client.on(...)` listeners, reading `client.ship` / `client.location`, and fetching companion snapshots.
