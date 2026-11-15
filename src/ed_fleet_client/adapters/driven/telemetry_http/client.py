@@ -111,7 +111,25 @@ class TelemetryHttpClient(TelemetryTransportPort):
         return dict(resp.data) if isinstance(resp.data, dict) else {}
 
     async def stream_events(self) -> AsyncIterator[dict[str, Any]]:
-        """Streams raw telemetry event payloads."""
-        resp = self.get_state()
-        if isinstance(resp.data, dict):
-            yield dict(resp.data)
+        """Streams raw telemetry event payloads via SSE /api/v1/stream."""
+        import json
+
+        import httpx
+
+        url = self.config.build_url("/api/v1/stream")
+        headers = self._prepare_headers({"Accept": "text/event-stream"})
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream("GET", url, headers=headers) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    raw_json = line[5:].strip()
+                    if not raw_json:
+                        continue
+                    try:
+                        parsed = json.loads(raw_json)
+                        if isinstance(parsed, dict):
+                            yield parsed
+                    except json.JSONDecodeError:
+                        continue
