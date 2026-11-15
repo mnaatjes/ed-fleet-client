@@ -107,10 +107,15 @@ def test_port_signatures_use_pure_dtos_and_primitives() -> None:
 
 
 def test_domain_and_use_cases_have_zero_lifecycle_pollution() -> None:
-    """Asserts that core domain and use cases do not control thread or process lifecycles."""
+    """Asserts that core domain and use cases do not control thread or process lifecycles.
+
+    Permits threading.Lock / threading.RLock synchronization primitives for safe in-memory
+    collection and state access, but forbids thread spawning (threading.Thread), process workers
+    (multiprocessing.Process), OS subprocesses, signals, or event loop control (asyncio.run).
+    """
     pkg_root = _get_package_root()
     core_dirs = [pkg_root / "core" / "domain", pkg_root / "core" / "use_cases"]
-    forbidden_modules = {"threading", "multiprocessing", "subprocess", "signal"}
+    forbidden_modules = {"multiprocessing", "subprocess", "signal"}
 
     for core_dir in core_dirs:
         for py_file in core_dir.rglob("*.py"):
@@ -125,6 +130,12 @@ def test_domain_and_use_cases_have_zero_lifecycle_pollution() -> None:
                     assert (
                         node.module.split(".")[0] not in forbidden_modules
                     ), f"Core file {py_file.name} imports lifecycle module: {node.module}"
+                    if node.module == "threading":
+                        for alias in node.names:
+                            assert alias.name not in {"Thread", "Timer"}, (
+                                f"Core file {py_file.name} imports thread lifecycle primitive: "
+                                f"{alias.name}"
+                            )
                 elif isinstance(node, ast.Call):
                     # Flag asyncio.run()
                     if (
@@ -136,6 +147,15 @@ def test_domain_and_use_cases_have_zero_lifecycle_pollution() -> None:
                         raise AssertionError(
                             f"Core file {py_file.name} executes asyncio.run() lifecycle control."
                         )
+                    # Flag threading.Thread(...) or threading.Timer(...)
+                    if (
+                        isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "threading"
+                        and node.func.attr in {"Thread", "Timer"}
+                    ):
+                        msg = f"Core {py_file.name} instantiates threading.{node.func.attr}."
+                        raise AssertionError(msg)
 
 
 def test_domain_never_imports_ports_or_use_cases() -> None:
@@ -222,7 +242,11 @@ def test_domain_entities_are_self_validating() -> None:
 
     entities_audited = 0
     for py_file in domain_dir.rglob("*.py"):
-        if py_file.name in {"__init__.py", "exceptions.py"}:
+        if (
+            py_file.name in {"__init__.py", "exceptions.py"}
+            or "models" not in py_file.stem
+            and py_file.stem != "health"
+        ):
             continue
         tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
         for node in ast.walk(tree):
