@@ -13,6 +13,31 @@ from ed_fleet_client.adapters.driven.telemetry_http import EndpointMetadata
 
 
 @dataclass(frozen=True)
+class ResilientSnapshotModel:
+    """Resilient companion snapshot model preserving unknown fields (RISK-03)."""
+
+    target_name: str = ""
+    exists: bool = True
+    is_live_session: bool = False
+    timestamp: str | None = None
+    raw_hash: str | None = None
+    extra: Mapping[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_raw(cls, name: str, raw: Mapping[str, Any]) -> ResilientSnapshotModel:
+        known = {"target_name", "exists", "is_live_session", "timestamp", "raw_hash"}
+        extra = {k: v for k, v in raw.items() if k not in known}
+        return cls(
+            target_name=str(raw.get("target_name", name)),
+            exists=bool(raw.get("exists", True)),
+            is_live_session=bool(raw.get("is_live_session", False)),
+            timestamp=raw.get("timestamp"),
+            raw_hash=raw.get("raw_hash"),
+            extra=extra,
+        )
+
+
+@dataclass(frozen=True)
 class RawSnapshotRecord:
     """Raw auxiliary file snapshot container before entity mapping."""
 

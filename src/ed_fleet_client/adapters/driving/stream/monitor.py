@@ -53,11 +53,17 @@ class StreamMonitor:
             self._task = None
 
     async def _run_loop(self) -> None:
-        """Consumes events from the injected transport port."""
+        """Consumes events from the injected transport port with reconnect backoff."""
         while self._running:
-            async for frame in self._transport.stream_events():
-                if not self._running:
-                    break
-                for cb in self._callbacks:
-                    cb(frame)
+            try:
+                async for frame in self._transport.stream_events():
+                    if not self._running:
+                        break
+                    for cb in self._callbacks:
+                        cb(frame)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                await asyncio.sleep(self._config.reconnect_delay_seconds)
+                continue
             await asyncio.sleep(self._config.poll_interval_seconds)

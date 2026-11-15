@@ -135,14 +135,17 @@ class TelemetryDomainHydrator:
         return self.hydrate_journal_event(payload)
 
     def hydrate_snapshot(self, name: str, raw: dict[str, Any]) -> RawSnapshotRecord:
-        """Hydrates a named companion snapshot payload into a RawSnapshotRecord."""
+        """Hydrates a named companion snapshot payload with extra='allow' resilience."""
+        from .models import ResilientSnapshotModel
+
+        validated = ResilientSnapshotModel.from_raw(name, raw)
         return RawSnapshotRecord(
-            target_name=str(raw.get("target_name", name)),
-            exists=bool(raw.get("exists", True)),
-            is_live_session=bool(raw.get("is_live_session", False)),
-            timestamp=raw.get("timestamp"),
-            raw_hash=raw.get("raw_hash"),
-            data=dict(raw),
+            target_name=validated.target_name,
+            exists=validated.exists,
+            is_live_session=validated.is_live_session,
+            timestamp=validated.timestamp,
+            raw_hash=validated.raw_hash,
+            data={**dict(raw), **dict(validated.extra)},
         )
 
     def hydrate_state(self, response: TelemetryResponse[Any]) -> HydratedTelemetryState:

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .bootstrap.container import create_client
-from .client import EliteDangerousClient
+from ed_fleet_client.adapters.driving.facade import EliteDangerousClient
+from ed_fleet_client.bootstrap.container import create_client
 
 __all__ = (
     "EliteDangerousClient",
