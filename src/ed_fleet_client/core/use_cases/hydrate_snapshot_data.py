@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..ports.driven.telemetry_transport_port import TelemetryTransportPort
-from ..ports.driving.hydrator_port import HydratorPort
+from ed_fleet_client.core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+from ed_fleet_client.core.ports.driving.hydrator_port import HydratorPort
 
 
 class GetHydratedSnapshotUseCase:

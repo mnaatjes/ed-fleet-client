@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ...domain.state.models import ClientStateProjection
-from ..base import DrivingPort
+from ed_fleet_client.core.domain.state.models import ClientStateProjection
+from ed_fleet_client.core.ports.base import DrivingPort
 
 
 @runtime_checkable

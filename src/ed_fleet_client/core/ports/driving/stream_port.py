@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Protocol, runtime_checkable  # noqa: UP035
 
-from ..base import DrivingPort
+from ed_fleet_client.core.ports.base import DrivingPort
 
 
 @runtime_checkable

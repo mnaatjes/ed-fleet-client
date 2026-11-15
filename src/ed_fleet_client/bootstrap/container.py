@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from ..adapters.driven.telemetry_http.client import TelemetryHttpClient
-from ..adapters.driven.telemetry_http.models import TelemetryConnectionConfig
-from ..adapters.driving.hydrator.hydrator import TelemetryDomainHydrator
-from ..adapters.driving.stream.monitor import StreamMonitor
-from ..client import EliteDangerousClient
-from ..core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
-from ..core.domain.services.orbital import OrbitalMechanicsService
-from ..core.domain.state.engine import TelemetryStateEngine
-from ..core.use_cases.calculate_orbital_metrics import GetOrbitalMetricsUseCase
-from ..core.use_cases.dispatch_domain_events import ExecuteEventDispatchUseCase
-from ..core.use_cases.stream_and_reduce_telemetry import ProcessTelemetryStreamUseCase
+from ed_fleet_client.adapters.driven.telemetry_http.client import TelemetryHttpClient
+from ed_fleet_client.adapters.driven.telemetry_http.models import TelemetryConnectionConfig
+from ed_fleet_client.adapters.driving.hydrator.hydrator import TelemetryDomainHydrator
+from ed_fleet_client.adapters.driving.stream.monitor import StreamMonitor
+from ed_fleet_client.client import EliteDangerousClient
+from ed_fleet_client.core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
+from ed_fleet_client.core.domain.services.orbital import OrbitalMechanicsService
+from ed_fleet_client.core.domain.state.engine import TelemetryStateEngine
+from ed_fleet_client.core.use_cases.calculate_orbital_metrics import GetOrbitalMetricsUseCase
+from ed_fleet_client.core.use_cases.dispatch_domain_events import ExecuteEventDispatchUseCase
+from ed_fleet_client.core.use_cases.stream_and_reduce_telemetry import ProcessTelemetryStreamUseCase
 
 
 def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDangerousClient:

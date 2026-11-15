@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..domain.services.orbital import OrbitalMechanicsService
+from ed_fleet_client.core.domain.services.orbital import OrbitalMechanicsService
 
 
 class GetOrbitalMetricsUseCase:

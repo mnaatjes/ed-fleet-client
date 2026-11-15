@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ..domain.health import HealthStatus, SystemHealth
-from ..ports.driven.probe_port import SystemProbePort
-from ..ports.driving.health_port import GetHealthPort
+from ed_fleet_client.core.domain.health import HealthStatus, SystemHealth
+from ed_fleet_client.core.ports.driven.probe_port import SystemProbePort
+from ed_fleet_client.core.ports.driving.health_port import GetHealthPort
 
 
 class CheckHealthUseCase(GetHealthPort):

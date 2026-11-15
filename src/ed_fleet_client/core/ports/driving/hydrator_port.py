@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from ..base import DrivingPort
+from ed_fleet_client.core.ports.base import DrivingPort
 
 
 @runtime_checkable

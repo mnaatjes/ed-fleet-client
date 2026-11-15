@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ...domain.health import SystemHealth
-from ..base import DrivingPort
+from ed_fleet_client.core.domain.health import SystemHealth
+from ed_fleet_client.core.ports.base import DrivingPort
 
 
 @runtime_checkable

@@ -9,7 +9,8 @@ from typing import Any
 from ed_transport.adapters.driving.client import TransportClient
 from ed_transport.bootstrap.client_factory import create_transport_client
 
-from ....core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+from ed_fleet_client.core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+
 from .middleware import MetadataHydrationMiddleware
 from .models import TelemetryConnectionConfig, TelemetryResponse
 

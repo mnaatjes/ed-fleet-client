@@ -9,7 +9,7 @@ from typing import Any
 
 from ed_models import JournalEvent, StatusTelemetry
 
-from ...driven.telemetry_http import EndpointMetadata
+from ed_fleet_client.adapters.driven.telemetry_http import EndpointMetadata
 
 
 @dataclass(frozen=True)

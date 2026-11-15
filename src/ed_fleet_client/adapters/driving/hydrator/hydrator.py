@@ -15,7 +15,8 @@ from ed_models import (
     parse_journal_event,
 )
 
-from ...driven.telemetry_http import TelemetryResponse
+from ed_fleet_client.adapters.driven.telemetry_http import TelemetryResponse
+
 from .models import (
     HydratedEventRecord,
     HydratedTelemetryState,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..domain.state.engine import TelemetryStateEngine
-from ..domain.state.models import ClientStateProjection
-from ..ports.driving.hydrator_port import HydratorPort
+from ed_fleet_client.core.domain.state.engine import TelemetryStateEngine
+from ed_fleet_client.core.domain.state.models import ClientStateProjection
+from ed_fleet_client.core.ports.driving.hydrator_port import HydratorPort
 
 
 class ProcessTelemetryStreamUseCase:

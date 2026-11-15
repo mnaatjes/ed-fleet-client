@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, AsyncIterator, Protocol, runtime_checkable  # noqa: UP035
 
-from ..base import DrivenPort
+from ed_fleet_client.core.ports.base import DrivenPort
 
 
 @runtime_checkable

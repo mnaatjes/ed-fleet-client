@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ..domain.dispatcher.dispatcher import TelemetryEventDispatcher
-from ..domain.dispatcher.models import DispatchResult, TelemetryEvent
+from ed_fleet_client.core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
+from ed_fleet_client.core.domain.dispatcher.models import DispatchResult, TelemetryEvent
 
 
 class ExecuteEventDispatchUseCase:

@@ -6,7 +6,8 @@ import asyncio
 from collections.abc import Callable
 from typing import Any
 
-from ....core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+from ed_fleet_client.core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+
 from .models import StreamMonitorConfig
 
 
