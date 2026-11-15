@@ -8,6 +8,10 @@ from ed_fleet_client.adapters.driving.facade import EliteDangerousClient
 from ed_fleet_client.adapters.driving.hydrator.hydrator import TelemetryDomainHydrator
 from ed_fleet_client.adapters.driving.stream.monitor import StreamMonitor
 from ed_fleet_client.core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
+from ed_fleet_client.core.domain.services.astrophysics import AstrophysicsService
+from ed_fleet_client.core.domain.services.combat_analytics import CombatAnalyticsService
+from ed_fleet_client.core.domain.services.flight_performance import FlightPerformanceService
+from ed_fleet_client.core.domain.services.navigation import NavigationService
 from ed_fleet_client.core.domain.services.orbital import OrbitalMechanicsService
 from ed_fleet_client.core.domain.state.engine import TelemetryStateEngine
 from ed_fleet_client.core.use_cases.calculate_orbital_metrics import GetOrbitalMetricsUseCase
@@ -26,8 +30,26 @@ def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDange
 
     state_engine = TelemetryStateEngine()
     dispatcher = TelemetryEventDispatcher()
+    state_accessor = lambda: state_engine.current  # noqa: E731
+
     orbital_service = OrbitalMechanicsService(
-        state_accessor=lambda: state_engine.current,
+        state_accessor=state_accessor,
+        dispatcher=dispatcher,
+    )
+    navigation_service = NavigationService(
+        state_accessor=state_accessor,
+        dispatcher=dispatcher,
+    )
+    astrophysics_service = AstrophysicsService(
+        state_accessor=state_accessor,
+        dispatcher=dispatcher,
+    )
+    flight_performance_service = FlightPerformanceService(
+        state_accessor=state_accessor,
+        dispatcher=dispatcher,
+    )
+    combat_analytics_service = CombatAnalyticsService(
+        state_accessor=state_accessor,
         dispatcher=dispatcher,
     )
 
@@ -51,4 +73,8 @@ def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDange
         state_engine=state_engine,
         dispatcher=dispatcher,
         orbital_service=orbital_service,
+        navigation_service=navigation_service,
+        astrophysics_service=astrophysics_service,
+        flight_performance_service=flight_performance_service,
+        combat_analytics_service=combat_analytics_service,
     )

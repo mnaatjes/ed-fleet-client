@@ -5,6 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from ed_fleet_client.core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
+from ed_fleet_client.core.domain.services.astrophysics import AstrophysicsService
+from ed_fleet_client.core.domain.services.combat_analytics import CombatAnalyticsService
+from ed_fleet_client.core.domain.services.flight_performance import FlightPerformanceService
+from ed_fleet_client.core.domain.services.navigation import NavigationService
 from ed_fleet_client.core.domain.services.orbital import OrbitalMechanicsService
 from ed_fleet_client.core.domain.state.engine import TelemetryStateEngine
 from ed_fleet_client.core.domain.state.models import ClientStateProjection
@@ -30,6 +34,10 @@ class EliteDangerousClient:
         state_engine: TelemetryStateEngine,
         dispatcher: TelemetryEventDispatcher,
         orbital_service: OrbitalMechanicsService,
+        navigation_service: NavigationService,
+        astrophysics_service: AstrophysicsService,
+        flight_performance_service: FlightPerformanceService,
+        combat_analytics_service: CombatAnalyticsService,
     ) -> None:
         self._stream = stream
         self._stream_use_case = stream_use_case
@@ -39,6 +47,10 @@ class EliteDangerousClient:
         self._state_engine = state_engine
         self._dispatcher = dispatcher
         self._orbital_service = orbital_service
+        self._navigation_service = navigation_service
+        self._astrophysics_service = astrophysics_service
+        self._flight_performance_service = flight_performance_service
+        self._combat_analytics_service = combat_analytics_service
         self._stream.on_event(self._handle_raw_event)
 
     def _handle_raw_event(self, raw: dict[str, Any]) -> None:
@@ -58,6 +70,26 @@ class EliteDangerousClient:
     def orbital(self) -> GetOrbitalMetricsUseCase:
         """Returns the orbital metrics use case."""
         return self._orbital_use_case
+
+    @property
+    def navigation(self) -> NavigationService:
+        """Returns the navigation domain service."""
+        return self._navigation_service
+
+    @property
+    def astrophysics(self) -> AstrophysicsService:
+        """Returns the astrophysics domain service."""
+        return self._astrophysics_service
+
+    @property
+    def flight_performance(self) -> FlightPerformanceService:
+        """Returns the flight performance domain service."""
+        return self._flight_performance_service
+
+    @property
+    def combat_analytics(self) -> CombatAnalyticsService:
+        """Returns the combat analytics domain service."""
+        return self._combat_analytics_service
 
     async def get_snapshot(self, name: str, endpoint: str) -> Any:
         """Fetches and hydrates a named companion snapshot via UC-03."""

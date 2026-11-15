@@ -12,3 +12,7 @@ def test_create_client_wires_facade() -> None:
     assert client.state is not None
     assert client.dispatcher is not None
     assert client.orbital is not None
+    assert client.navigation is not None
+    assert client.astrophysics is not None
+    assert client.flight_performance is not None
+    assert client.combat_analytics is not None
