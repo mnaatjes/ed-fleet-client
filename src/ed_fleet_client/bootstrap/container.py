@@ -1,37 +1,46 @@
-"""Composition root wiring adapters and interactors into executable runtime services."""
+"""Composition root wiring concrete adapters to core ports and use cases."""
 
 from __future__ import annotations
 
-from ..adapters.driven.system_probe import OsSystemProbeAdapter
-from ..adapters.driving.cli_health import CliHealthAdapter
-from ..core.ports.driven.probe_port import SystemProbePort
-from ..core.ports.driving.health_port import GetHealthPort
-from ..core.use_cases.check_health import CheckHealthUseCase
+from ..adapters.driven.telemetry_http.client import TelemetryHttpClient
+from ..adapters.driven.telemetry_http.models import TelemetryConnectionConfig
+from ..adapters.driving.hydrator.hydrator import TelemetryDomainHydrator
+from ..adapters.driving.stream.monitor import StreamMonitor
+from ..client import EliteDangerousClient
+from ..core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
+from ..core.domain.services.orbital import OrbitalMechanicsService
+from ..core.domain.state.engine import TelemetryStateEngine
+from ..core.use_cases.calculate_orbital_metrics import GetOrbitalMetricsUseCase
+from ..core.use_cases.dispatch_domain_events import ExecuteEventDispatchUseCase
+from ..core.use_cases.stream_and_reduce_telemetry import ProcessTelemetryStreamUseCase
 
 
-class Container:
-    """Dependency injection container and composition root.
+def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDangerousClient:
+    """Builds and wires a complete EliteDangerousClient instance."""
+    transport = TelemetryHttpClient(config=config)
+    hydrator = TelemetryDomainHydrator()
+    stream = StreamMonitor(transport=transport)
 
-    Wires concrete adapters to use cases and enforces interface contracts.
-    """
+    state_engine = TelemetryStateEngine()
+    dispatcher = TelemetryEventDispatcher()
+    orbital_service = OrbitalMechanicsService(
+        state_accessor=lambda: state_engine.current,
+        dispatcher=dispatcher,
+    )
 
-    def __init__(self, service_name: str = "health-service") -> None:
-        self.service_name = service_name
+    stream_use_case = ProcessTelemetryStreamUseCase(
+        hydrator=hydrator,
+        state_engine=state_engine,
+    )
+    dispatch_use_case = ExecuteEventDispatchUseCase(dispatcher=dispatcher)
+    orbital_use_case = GetOrbitalMetricsUseCase(orbital_service=orbital_service)
 
-    def build_system_probe(self) -> SystemProbePort:
-        """Instantiates concrete driven adapter."""
-        adapter = OsSystemProbeAdapter()
-        assert isinstance(adapter, SystemProbePort), "Adapter must satisfy SystemProbePort"
-        return adapter
-
-    def build_health_use_case(self) -> GetHealthPort:
-        """Instantiates use case interactor with injected driven adapter."""
-        probe = self.build_system_probe()
-        use_case = CheckHealthUseCase(probe=probe, service_name=self.service_name)
-        assert isinstance(use_case, GetHealthPort), "Use case must satisfy GetHealthPort"
-        return use_case
-
-    def build_cli_health_adapter(self) -> CliHealthAdapter:
-        """Instantiates driving adapter with injected use case."""
-        use_case = self.build_health_use_case()
-        return CliHealthAdapter(health_service=use_case)
+    return EliteDangerousClient(
+        stream=stream,
+        stream_use_case=stream_use_case,
+        dispatch_use_case=dispatch_use_case,
+        orbital_use_case=orbital_use_case,
+        state_engine=state_engine,
+        dispatcher=dispatcher,
+        orbital_service=orbital_service,
+    )
