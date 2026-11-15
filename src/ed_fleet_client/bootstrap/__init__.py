@@ -1,5 +1,7 @@
-"""Composition root and dependency injection wiring."""
+"""Bootstrap composition root package."""
 
-from .container import Container
+from __future__ import annotations
 
-__all__ = ["Container"]
+from .container import create_client
+
+__all__ = ("create_client",)
