@@ -17,6 +17,11 @@ ed-transport = { git = "https://github.com/mnaatjes/ed-transport.git", branch = 
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "bump-my-version>=1.8.1",
+]
+
 [project.optional-dependencies]
 dev = [
 # Boundary Linters & Architectural Compliance
@@ -58,3 +63,23 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "ed_fleet_client.core.domain.services.models"
 disallow_subclassing_any = false
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "README.md"
+search = "**Version:** {current_version}"
+replace = "**Version:** {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## [Unreleased]"
+replace = "## [Unreleased]\n\n## [{new_version}] - {now:%Y-%m-%d}"

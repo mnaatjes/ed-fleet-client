@@ -2,6 +2,8 @@
 
 Unified reactive client SDK and state facade for Elite Dangerous telemetry services
 
+**Version:** 0.1.0
+
 ## Architectural Governance
 This service is architected in accordance with Hexagonal Architecture (Ports and Adapters).
 * Core Domain logic resides in `src/ed_fleet_client/core/` with ZERO external infrastructure dependencies.
