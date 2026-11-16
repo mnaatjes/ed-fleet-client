@@ -67,7 +67,9 @@ class EliteDangerousClient:
         self._stream.on_event(self._handle_raw_event)
 
     def _handle_raw_event(self, raw: dict[str, Any]) -> None:
-        self._stream_use_case.process_raw_event(raw)
+        _state, event = self._stream_use_case.process_raw_event(raw)
+        if event is not None:
+            self._dispatch_use_case.dispatch(event)
 
     async def __aenter__(self) -> EliteDangerousClient:
         """Connects to the telemetry stream when entering an async context."""

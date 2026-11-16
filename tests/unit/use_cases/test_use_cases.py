@@ -37,7 +37,7 @@ def test_uc01_process_telemetry_stream() -> None:
     engine = TelemetryStateEngine()
     uc = ProcessTelemetryStreamUseCase(hydrator=hydrator, state_engine=engine)
 
-    state = uc.process_raw_event(
+    state, event = uc.process_raw_event(
         {
             "timestamp": "2026-11-15T00:00:00Z",
             "event": "FSDJump",
@@ -45,6 +45,8 @@ def test_uc01_process_telemetry_stream() -> None:
         }
     )
     assert state.location.star_system == "Shinrarta Dezhra"
+    assert event is not None
+    assert event.event == "FSDJump"
 
 
 def test_uc02_execute_event_dispatch() -> None:
