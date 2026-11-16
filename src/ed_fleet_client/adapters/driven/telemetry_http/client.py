@@ -105,6 +105,11 @@ class TelemetryHttpClient(TelemetryTransportPort):
         resp = self.get_status()
         return dict(resp.data) if isinstance(resp.data, dict) else {}
 
+    async def fetch_state(self) -> dict[str, Any]:
+        """Fetches consolidated state payload from GET /api/v1/state."""
+        resp = self.get_state()
+        return dict(resp.data) if isinstance(resp.data, dict) else {}
+
     async def fetch_snapshot(self, endpoint: str) -> dict[str, Any]:
         """Fetches a raw companion snapshot payload from the given endpoint."""
         resp = self.request(endpoint)
