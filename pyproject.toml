@@ -1,6 +1,6 @@
 [project]
 name = "ed-fleet-client"
-version = "0.1.1"
+version = "0.1.2"
 description = "Unified reactive client SDK and state facade for Elite Dangerous telemetry services"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -65,7 +65,7 @@ module = "ed_fleet_client.core.domain.services.models"
 disallow_subclassing_any = false
 
 [tool.bumpversion]
-current_version = "0.1.1"
+current_version = "0.1.2"
 commit = true
 tag = true
 
