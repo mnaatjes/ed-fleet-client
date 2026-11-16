@@ -15,6 +15,10 @@ class TelemetryTransportPort(DrivenPort, Protocol):
         """Fetches the latest raw Status.json payload."""
         ...
 
+    async def fetch_state(self) -> dict[str, Any]:
+        """Fetches consolidated state payload from GET /api/v1/state."""
+        ...
+
     async def fetch_snapshot(self, endpoint: str) -> dict[str, Any]:
         """Fetches a raw companion snapshot payload from the given endpoint."""
         ...

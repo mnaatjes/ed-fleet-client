@@ -23,6 +23,8 @@ from ed_fleet_client.core.domain.state.models import (
     SessionProjection,
     ShipProjection,
 )
+from ed_fleet_client.core.ports.driven.telemetry_transport_port import TelemetryTransportPort
+from ed_fleet_client.core.ports.driving.hydrator_port import HydratorPort
 from ed_fleet_client.core.ports.driving.stream_port import StreamIngestionPort
 from ed_fleet_client.core.use_cases.calculate_orbital_metrics import GetOrbitalMetricsUseCase
 from ed_fleet_client.core.use_cases.dispatch_domain_events import ExecuteEventDispatchUseCase
@@ -51,6 +53,8 @@ class EliteDangerousClient:
         astrophysics_service: AstrophysicsService,
         flight_performance_service: FlightPerformanceService,
         combat_analytics_service: CombatAnalyticsService,
+        transport: TelemetryTransportPort | None = None,
+        hydrator: HydratorPort | None = None,
     ) -> None:
         self._stream = stream
         self._stream_use_case = stream_use_case
@@ -64,6 +68,8 @@ class EliteDangerousClient:
         self._astrophysics_service = astrophysics_service
         self._flight_performance_service = flight_performance_service
         self._combat_analytics_service = combat_analytics_service
+        self._transport = transport
+        self._hydrator = hydrator
         self._stream.on_event(self._handle_raw_event)
 
     def _handle_raw_event(self, raw: dict[str, Any]) -> None:
@@ -146,8 +152,33 @@ class EliteDangerousClient:
         """Fetches and hydrates a named companion snapshot via UC-03."""
         return await self._snapshot_use_case.execute(name, endpoint)
 
-    async def connect(self) -> None:
-        """Connects to the telemetry stream and begins state reduction."""
+    async def connect(self, sync_initial_state: bool = True) -> None:
+        """Connects to the telemetry stream and begins state reduction.
+
+        If sync_initial_state is True and transport/hydrator are wired, fetches the
+        consolidated state payload to seed state_engine before stream processing starts.
+        """
+        if sync_initial_state and self._transport is not None and self._hydrator is not None:
+            try:
+                raw_state = await self._transport.fetch_state()
+                if isinstance(raw_state, dict):
+                    # Hydrate game_status from state payload if present
+                    raw_status = raw_state.get("game_status")
+                    if isinstance(raw_status, dict) and raw_status.get("exists", True):
+                        status = self._hydrator.hydrate_status(raw_status)
+                        if status is not None:
+                            self._state_engine.apply(status)
+
+                    # Hydrate latest_journal_event from state payload if present
+                    raw_event = raw_state.get("latest_journal_event")
+                    if isinstance(raw_event, dict):
+                        event = self._hydrator.hydrate_journal_event(raw_event)
+                        if event is not None:
+                            self._state_engine.apply(event)
+            except Exception:
+                # Initial sync failure must not block stream connectivity
+                pass
+
         await self._stream.start()
 
     async def disconnect(self) -> None:

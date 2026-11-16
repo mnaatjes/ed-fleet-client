@@ -17,7 +17,7 @@ class ClientFacadePort(DrivingPort, Protocol):
         """Returns the current immutable materialized client state projection."""
         ...
 
-    async def connect(self) -> None:
+    async def connect(self, sync_initial_state: bool = True) -> None:
         """Connects to the telemetry stream and begins state reduction."""
         ...
 

@@ -12,6 +12,8 @@ class StreamMonitorConfig:
 
     poll_interval_seconds: float = 0.5
     reconnect_delay_seconds: float = 2.0
+    filter_historical: bool = True
+    since_timestamp: str | None = None
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,7 @@ from ed_fleet_client.adapters.driven.telemetry_http.client import TelemetryHttpC
 from ed_fleet_client.adapters.driven.telemetry_http.models import TelemetryConnectionConfig
 from ed_fleet_client.adapters.driving.facade import EliteDangerousClient
 from ed_fleet_client.adapters.driving.hydrator.hydrator import TelemetryDomainHydrator
+from ed_fleet_client.adapters.driving.stream.models import StreamMonitorConfig
 from ed_fleet_client.adapters.driving.stream.monitor import StreamMonitor
 from ed_fleet_client.core.domain.dispatcher.dispatcher import TelemetryEventDispatcher
 from ed_fleet_client.core.domain.services.astrophysics import AstrophysicsService
@@ -22,11 +23,14 @@ from ed_fleet_client.core.use_cases.stream_and_reduce_telemetry import (
 )
 
 
-def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDangerousClient:
+def create_client(
+    config: TelemetryConnectionConfig | None = None,
+    stream_config: StreamMonitorConfig | None = None,
+) -> EliteDangerousClient:
     """Builds and wires a complete EliteDangerousClient instance."""
     transport = TelemetryHttpClient(config=config)
     hydrator = TelemetryDomainHydrator()
-    stream = StreamMonitor(transport=transport)
+    stream = StreamMonitor(transport=transport, config=stream_config)
 
     state_engine = TelemetryStateEngine()
     dispatcher = TelemetryEventDispatcher()
@@ -77,4 +81,6 @@ def create_client(config: TelemetryConnectionConfig | None = None) -> EliteDange
         astrophysics_service=astrophysics_service,
         flight_performance_service=flight_performance_service,
         combat_analytics_service=combat_analytics_service,
+        transport=transport,
+        hydrator=hydrator,
     )

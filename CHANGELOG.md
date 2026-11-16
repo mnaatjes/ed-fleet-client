@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added initial state synchronization on `EliteDangerousClient.connect(sync_initial_state=True)` to seed `state_engine` from `GET /api/v1/state` prior to stream processing.
+- Added historical frame filtering in `StreamMonitor` (`StreamMonitorConfig.filter_historical=True` and `since_timestamp`) to drop pre-connection events from replay buffers.
+- Added `fetch_state()` method to `TelemetryTransportPort` and `TelemetryHttpClient`.
+- Exported `StreamMonitorConfig` from top-level `ed_fleet_client`.
+
 ## [0.1.1] - 2026-11-16
 
 ### Fixed
