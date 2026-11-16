@@ -2,7 +2,7 @@
 
 Unified reactive client SDK and state facade for Elite Dangerous telemetry services
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 ## Architectural Governance
 This service is architected in accordance with Hexagonal Architecture (Ports and Adapters).
