@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Fixed SSE journal and status payload hydration in `TelemetryDomainHydrator` by supporting `"payload"` in addition to `"payload_json"`.
+- Fixed event propagation in `EliteDangerousClient._handle_raw_event` to dispatch hydrated domain events to subscribers.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added

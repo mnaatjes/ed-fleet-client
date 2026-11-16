@@ -44,6 +44,11 @@ class TelemetryDomainHydrator:
                     data = json.loads(raw["raw_payload"])
                 except (json.JSONDecodeError, TypeError):
                     return None
+            elif "payload" in raw and isinstance(raw["payload"], str):
+                try:
+                    data = json.loads(raw["payload"])
+                except (json.JSONDecodeError, TypeError):
+                    return None
             else:
                 data = dict(raw)
         else:
@@ -118,6 +123,11 @@ class TelemetryDomainHydrator:
             if "payload_json" in raw and isinstance(raw["payload_json"], str):
                 try:
                     data = json.loads(raw["payload_json"])
+                except (json.JSONDecodeError, TypeError):
+                    return None
+            elif "payload" in raw and isinstance(raw["payload"], str):
+                try:
+                    data = json.loads(raw["payload"])
                 except (json.JSONDecodeError, TypeError):
                     return None
             else:
