@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Implemented deterministic telemetry property-to-event derivation and fidelity pipeline (`scripts/map_property_event_matrix.py` and `scripts/pipeline/`) governed by ADR 0005 and SDD 0006.
+- Added upstream version validator enforcing strict pinning against `ed-models` revision in `pyproject.toml`.
+- Added multi-vector fidelity scoring engine ($S_{\text{fidelity}} = 0.35C + 0.30U + 0.20A + 0.15R$) evaluating completeness, uniqueness, timing phase accuracy, and cadence.
+- Generated machine-readable traversible JSON graph `architecture/reference/data/property_event_matrix.v0.2.1.json` across 287 schemas and 566 properties.
+- Generated internal engineering coverage matrix `architecture/reference/property_fidelity_matrix.md`.
+- Generated Diataxis developer reference guide `docs/reference/canonical_property_map.md` mapping properties to projection paths and authoritative event sources.
+- Added automated test suite `tests/architecture/test_property_event_matrix.py` verifying matrix integrity, determinism, and version compliance.
+- Added draft architecture record `architecture/adr/drafts/empirical_telemetry_ingestion_and_bayesian_smoothing.md` specifying future Bayesian smoothing and regime-conditioned empirical mining.
+
 ## [0.1.2] - 2026-11-16
 
 ### Added
