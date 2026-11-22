@@ -26,3 +26,6 @@ Governed by Markdown Architectural Decision Records (MADR 3.0).
 | [0001](0001_high_level_architecture.md) | High-Level Hexagonal Architecture & Subsystem Integration | **Accepted** | 2026-11-13 | — |
 | [0002](0002_scope_boundaries_and_automated_enforcement.md) | System Scope, Boundaries, and Multi-Tier Automated Enforcement | **Accepted** | 2026-11-13 | — |
 | [0003](0003_submodule_migration_and_hexagonal_realignment.md) | Submodule Migration and Hexagonal Architectural Realignment Plan | **Accepted** | 2026-11-13 | — |
+| [0004](0004_end_user_control_plane_facade.md) | End-User Control Plane Facade & Driving Adapters | **Accepted** | 2026-11-15 | — |
+| [0005](0005_property_event_fidelity_mapping_pipeline.md) | Deterministic Telemetry Property-to-Event Derivation & Fidelity Mapping Pipeline | **Accepted** | 2026-11-22 | — |
+| [0006](0006_empirical_telemetry_ingestion_and_bayesian_smoothing.md) | Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity | **Proposed** | 2026-11-22 | — |
