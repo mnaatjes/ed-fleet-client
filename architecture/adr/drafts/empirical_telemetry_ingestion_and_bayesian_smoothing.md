@@ -1,11 +1,11 @@
 ---
-title: "ADR 0006: Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity"
-status: "proposed"
+title: "Draft ADR: Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity"
+status: "draft"
 date: "2026-11-22"
-tags: ["architecture", "adr", "telemetry", "fidelity", "bayesian", "regimes", "empirical-mining", "ed-telemetry"]
+tags: ["architecture", "adr", "draft", "telemetry", "fidelity", "bayesian", "regimes", "empirical-mining", "ed-telemetry"]
 ---
 
-# ADR 0006: Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity
+# Draft ADR: Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity
 
 ## 1. Context and Problem Statement
 
