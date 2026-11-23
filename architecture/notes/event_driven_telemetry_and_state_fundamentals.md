@@ -364,3 +364,112 @@ Depending on your engineering discipline, continuously reading state in a loop g
 | **HUDs, GUIs, Overlays, Web Dashboards** | **Game Loop / State Sampling** | `while True: print(client.location.star_system); await asyncio.sleep(0.5)` |
 | **Alerts, Sound Effects, Discord Bots** | **Event Listener (`@client.on`)** | `@client.on(FSDJump)` $\to$ `play_sound("jump.wav")` |
 | **Sequential Procedural Scripts** | **One-Shot Awaiter (`wait_for`)** | `await client.wait_for(FSDJump)` |
+
+---
+
+## 12. Asynchronous Design Patterns: Taxonomies, Divergence, and Push vs. Pull
+
+Asynchronous systems are not one-size-fits-all. Different operational requirements demand distinct async patterns depending on **who controls execution timing** and **whether a return value is expected**.
+
+### The 4 Canonical Asynchronous Patterns
+
+```mermaid
+flowchart TD
+    subgraph P1 ["1. Request-Response (Futures / Promises)"]
+        Req["Client calls 'await fetch()'"] --> Susp["Caller suspends"]
+        Susp --> Ret["Resumes with return value"]
+    end
+
+    subgraph P2 ["2. Fire-and-Forget (Background Delegation)"]
+        Fire["Client calls 'loop.create_task()'"] --> Bg["Runs in background"]
+        Fire --> Cont["Caller continues immediately;\nResult is discarded!"]
+    end
+
+    subgraph P3 ["3. Reactive Async Stream (Generator Pipeline)"]
+        Gen["async for chunk in stream:"] --> Consume["Consumer pulls next element\nwhen ready (backpressure control)"]
+    end
+
+    subgraph P4 ["4. Pub/Sub Event Fanout (Observer)"]
+        Broad["broadcast(event)"] --> L1["Listener 1 (Audio)"]
+        Broad --> L2["Listener 2 (Database)"]
+        Broad --> L3["Listener 3 (HUD)"]
+    end
+```
+
+#### 1. Request-Response / Future-Promise Pattern
+- **Definition:** The caller initiates a task, suspends its own execution, and awaits fulfillment of a Promise/Future containing a return value.
+- **When to Use:** When the caller strictly needs the result of a remote or deferred calculation before proceeding.
+- **Example in `ed-fleet-client`:**
+  ```python
+  snapshot = await client.get_snapshot("status", "/api/v1/status")
+  ```
+
+#### 2. Fire-and-Forget Pattern (`loop.create_task`)
+- **Definition:** The caller schedules an asynchronous coroutine on the event loop and immediately returns without awaiting completion.
+- **When to Use:** When the operation is purely for side effects (logging, analytics, sounds) and must **never** block or slow down the originating caller or ingestion pipeline.
+- **Example in `ed-fleet-client`:**
+  ```python
+  # TelemetryEventDispatcher alerting a user listener without delaying the stream:
+  loop.create_task(user_listener(event))
+  ```
+
+#### 3. Reactive Async Stream / Generator Pattern (`async for`)
+- **Definition:** An unbounded sequence of asynchronous data elements delivered over time through an `AsyncIterator`.
+- **When to Use:** Ingesting real-time network sockets, WebSockets, or Server-Sent Events (SSE) where packets arrive continuously over hours or days.
+- **Example in `ed-fleet-client`:**
+  ```python
+  async for raw_json_packet in websocket_transport:
+      process_telemetry(raw_json_packet)
+  ```
+
+#### 4. Publish / Subscribe (Pub/Sub) Fanout Pattern
+- **Definition:** A single event is broadcast across a registry of decoupled observers, where each observer receives a copy independently.
+- **When to Use:** When multiple independent subsystems need to react to the exact same game event without knowing about each other.
+- **Example in `ed-fleet-client`:**
+  ```python
+  @client.on(FSDJump)
+  def on_jump(event: FSDJump): ...
+  ```
+
+---
+
+### The Fundamental Divide: Asynchronous Push vs. Asynchronous Pull
+
+The single most important architectural axis in asynchronous communication is **who initiates data movement**:
+
+```mermaid
+flowchart LR
+    subgraph Push ["Asynchronous PUSH (Producer-Driven)"]
+        direction LR
+        Prod["Telemetry Producer\n(Game Socket)"] -->|"Pushes immediately\non arrival!"| PushConsumer["Consumer Callback\n(@client.on)"]
+    end
+
+    subgraph Pull ["Asynchronous PULL (Consumer-Driven)"]
+        direction LR
+        PullConsumer["Consumer Code\n(Game Loop)"] -->|"Requests next value\nwhen ready!"| StateStore["In-Memory State Store\n(client.location)"]
+    end
+```
+
+#### Asynchronous Push (Producer-Driven)
+* **Mechanics:** The producer decides **when** execution happens. When the outside world produces data, your code is immediately invoked via a callback or event handler.
+* **Characteristics:** Lowest possible latency (near 0ms reaction time).
+* **Risks:** **Buffer Overflow / Overload.** If the producer pushes 10,000 events/second but the consumer can only process 100 events/second, memory will balloon unless backpressure or fire-and-forget is applied.
+* **Usage:** Instant alerts, audio cues, critical spatial hazard triggers (e.g., proximity warnings).
+
+#### Asynchronous Pull (Consumer-Driven)
+* **Mechanics:** The consumer decides **when** execution happens. The consumer asks for data only when it is idle, ready to render, or on a scheduled clock tick.
+* **Characteristics:** Immune to consumer overload because the consumer controls its own pacing.
+* **Risks:** Potential polling latency (e.g. if you poll every 500ms, you might see an event up to 500ms after it occurred).
+* **Usage:** UI render loops, GUI dashboards, periodic health checks, batch aggregation.
+
+---
+
+### Pattern Divergence & Selection Matrix
+
+| Pattern | Flow Direction | Execution Timing | Expected Result | Primary Danger |
+| :--- | :--- | :--- | :--- | :--- |
+| **Request-Response** | Pull (Bidirectional) | Synchronous to caller | Exact return value | Deadlock or slow network timeouts |
+| **Fire-and-Forget** | Push (Unidirectional) | Concurrently in background | None (Ignored) | Unhandled errors silently discarded |
+| **Async Stream (`async for`)** | Pull (Element-by-Element) | Sequential per element | Stream elements | Producer backlog if consumption is slow |
+| **Pub/Sub Observer** | Push (Broadcasting) | Event-driven on arrival | None (Side effects) | Non-deterministic ordering across listeners |
+| **State Store Sampling** | Pull (Synchronous Read) | Controlled by consumer tick | Instant snapshot | Local variable staleness if saved to variable |
