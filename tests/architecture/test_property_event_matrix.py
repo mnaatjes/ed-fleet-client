@@ -102,8 +102,9 @@ def test_generated_markdown_artifacts_exist_and_conform_to_frontmatter() -> None
     arch_md = REPO_ROOT / "architecture" / "reference" / "property_fidelity_matrix.md"
     docs_md = REPO_ROOT / "docs" / "reference" / "canonical_property_map.md"
     reducers_md = REPO_ROOT / "docs" / "reference" / "state_projections_and_reducers.md"
+    unmapped_md = REPO_ROOT / "docs" / "reference" / "event_streaming_catalog.md"
 
-    for path in (arch_md, docs_md, reducers_md):
+    for path in (arch_md, docs_md, reducers_md, unmapped_md):
         assert path.exists(), f"Markdown artifact not found: {path}"
         content = path.read_text(encoding="utf-8")
         assert content.startswith("---\n"), f"Missing YAML frontmatter in {path}"

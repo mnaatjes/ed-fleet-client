@@ -334,3 +334,99 @@ class ArtifactSynthesizer:
 
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
+
+    def render_unmapped_catalog(self, output_path: Path | str) -> None:
+        """Render Diataxis Reference catalog for event-only (unmapped) telemetry properties."""
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        # Collect unmapped properties grouped by tier
+        tier_names = {
+            1: "Tier 1: Core Navigation & Session Identity",
+            2: "Tier 2: Operational Vessel & Flight Telemetry",
+            3: "Tier 3: Contextual, Exploration & Market Data",
+            4: "Tier 4: Granular, Ephemeral & Event-Specific Payload Data",
+        }
+
+        unmapped_by_tier: dict[int, list[ScoredPropertyDimension]] = {1: [], 2: [], 3: [], 4: []}
+        for prop_name, dim in self.dimensions.items():
+            if PROJECTION_TARGET_MAP.get(prop_name) is None:
+                unmapped_by_tier[dim.tier].append(dim)
+
+        total_unmapped = sum(len(props) for props in unmapped_by_tier.values())
+
+        lines: list[str] = [
+            "---",
+            'title: "Event-Only Telemetry Streaming Catalog"',
+            'tags: ["telemetry", "events", "streaming", "catalog", "unmapped", "reference"]',
+            f'created_at: "{today}"',
+            f'last_updated_at: "{today}"',
+            "---",
+            "",
+            "# Event-Only Telemetry Streaming Catalog",
+            "",
+            "> [!NOTE]",
+            (
+                f"> Deterministically generated from **`ed-models` v{self.version}**. "
+                f"Catalogs all {total_unmapped} telemetry properties available exclusively "
+                "via asynchronous event streaming rather than state projections."
+            ),
+            "",
+            "## How to Consume Event-Only Properties",
+            "",
+            (
+                "Properties in this catalog are not held in long-lived state projections. "
+                "Instead, applications subscribe directly to the event schemas that emit them "
+                "using the client event dispatcher:"
+            ),
+            "",
+            "```python",
+            "from ed_models.core.domain.events import EjectCargo",
+            "",
+            "@client.on(EjectCargo)",
+            "def on_cargo_ejected(event: EjectCargo) -> None:",
+            "    # Read event-only properties directly from the hydrated event",
+            "    is_abandoned = event.Abandoned",
+            "    cargo_type = event.Type",
+            "```",
+            "",
+            "---",
+            "",
+        ]
+
+        section_idx = 1
+        for tier in sorted(unmapped_by_tier.keys()):
+            props = sorted(unmapped_by_tier[tier], key=lambda d: d.property_name)
+            if not props:
+                continue
+
+            tier_title = tier_names.get(tier, f"Tier {tier}")
+            lines.extend(
+                [
+                    f"## {section_idx}. {tier_title} ({len(props)} Properties)",
+                    "",
+                    "| Property | Primary Event | Fidelity | Fallback Events |",
+                    "| :--- | :--- | :---: | :--- |",
+                ]
+            )
+
+            for d in props:
+                primary = f"`{d.primary_event}`" if d.primary_event else "*none*"
+                score_str = f"{d.primary_score:.2f}"
+                fallbacks = (
+                    ", ".join(f"`{ev}`" for ev in d.fallback_events[:3])
+                    if d.fallback_events
+                    else "—"
+                )
+                if len(d.fallback_events) > 3:
+                    fallbacks += f" *(+{len(d.fallback_events) - 3} more)*"
+
+                lines.append(f"| `{d.property_name}` | {primary} | {score_str} | {fallbacks} |")
+
+            lines.extend(["", "---", ""])
+            section_idx += 1
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
