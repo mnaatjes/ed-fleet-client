@@ -197,3 +197,15 @@ The pipeline is authored under `ed-fleet-client/scripts/` and invoked as:
 
 ### Negative / Trade-offs
 * **Corpus Requirement:** Empirical frequency and latency metrics require maintaining a representative reference flight log corpus in `data/reference_logs/`.
+
+---
+
+## 9. Addendum 1: Dataclass Schema Reflection for Projection Targets (2026-11-23)
+
+### Context & Decision
+In the initial v0.2.1 implementation of the pipeline, projection attribute mappings were defined via a static dictionary (`PROJECTION_TARGET_MAP`) in `scripts/pipeline/artifact_synthesizer.py`. This presented a risk of configuration drift whenever new state projections or reducers were added to `core/domain/state/models.py`.
+
+To eliminate manual ledger maintenance and preserve the single-source-of-truth principle:
+1. **Dynamic Dataclass Introspection:** `scripts/pipeline/schema_inspector.py` dynamically introspects `ClientStateProjection` and its nested projection classes (`LocationProjection`, `SessionProjection`, `ShipProjection`) using `dataclasses.fields()`.
+2. **Deterministic Dot-Notation Derivation:** The pipeline automatically builds dot-notation target paths (e.g. `location.star_system`, `session.commander_name`, `ship.cargo_capacity`) from domain models at pipeline execution time.
+3. **Automated Architectural Gate:** Architecture tests (`tests/architecture/test_property_event_matrix.py`) assert that all domain projection fields are properly resolved without requiring duplicate YAML or dictionary registries.

@@ -1,6 +1,6 @@
 {
   "version": "0.2.1",
-  "generated_at": "2026-11-22T21:00:03.156134+00:00",
+  "generated_at": "2026-11-23T02:41:59.289227+00:00",
   "properties_count": 566,
   "events_count": 287,
   "properties": {
@@ -149,7 +149,7 @@
       "tier": 3,
       "primary_event": "FSDJump",
       "primary_score": 0.69,
-      "projection_path": "unmapped",
+      "projection_path": "location.allegiance",
       "fallback_events": [
         "CarrierJump",
         "Location"
@@ -296,7 +296,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "telemetry.altitude",
+      "projection_path": "ship.telemetry.altitude",
       "fallback_events": [
         "Status",
         "Screenshot"
@@ -1328,7 +1328,7 @@
       "tier": 1,
       "primary_event": "ScanOrganic",
       "primary_score": 0.75,
-      "projection_path": "location.body_name",
+      "projection_path": "location.body",
       "fallback_events": [
         "StatusTelemetry",
         "ApproachBody",
@@ -1514,7 +1514,7 @@
       "tier": 4,
       "primary_event": "FSDJump",
       "primary_score": 0.66,
-      "projection_path": "unmapped",
+      "projection_path": "location.body_type",
       "fallback_events": [
         "SupercruiseExit",
         "CarrierJump",
@@ -2171,7 +2171,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.cargo",
       "fallback_events": [
         "Status"
       ],
@@ -3021,7 +3021,7 @@
       "tier": 1,
       "primary_event": "ClearSavedGame",
       "primary_score": 0.735,
-      "projection_path": "session.cmdr_fid",
+      "projection_path": "session.fid",
       "fallback_events": [
         "Commander",
         "LoadGame",
@@ -3075,7 +3075,7 @@
       "tier": 1,
       "primary_event": "LoadGame",
       "primary_score": 0.645,
-      "projection_path": "session.cmdr_name",
+      "projection_path": "session.commander_name",
       "fallback_events": [],
       "sources": [
         {
@@ -3701,7 +3701,7 @@
       "tier": 1,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.705,
-      "projection_path": "location.coordinates",
+      "projection_path": "location.star_pos",
       "fallback_events": [
         "FSDJump",
         "CarrierJump",
@@ -5267,7 +5267,7 @@
       "tier": 3,
       "primary_event": "FSDJump",
       "primary_score": 0.69,
-      "projection_path": "unmapped",
+      "projection_path": "location.economy",
       "fallback_events": [
         "CarrierJump",
         "Location"
@@ -9492,7 +9492,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.firegroup",
       "fallback_events": [
         "Status"
       ],
@@ -9524,7 +9524,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.88,
-      "projection_path": "telemetry.flags",
+      "projection_path": "ship.telemetry.flags",
       "fallback_events": [
         "Status"
       ],
@@ -9556,7 +9556,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.88,
-      "projection_path": "telemetry.flags2",
+      "projection_path": "ship.telemetry.flags2",
       "fallback_events": [
         "Status"
       ],
@@ -9728,7 +9728,7 @@
       "tier": 2,
       "primary_event": "Status",
       "primary_score": 0.705,
-      "projection_path": "ship.fuel_main",
+      "projection_path": "ship.telemetry.fuel_main",
       "fallback_events": [],
       "sources": [
         {
@@ -9748,7 +9748,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "ship.fuel_main",
+      "projection_path": "ship.telemetry.fuel_main",
       "fallback_events": [],
       "sources": [
         {
@@ -9768,7 +9768,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "ship.fuel_reservoir",
+      "projection_path": "ship.telemetry.fuel_reservoir",
       "fallback_events": [],
       "sources": [
         {
@@ -10067,7 +10067,7 @@
       "tier": 3,
       "primary_event": "FSDJump",
       "primary_score": 0.69,
-      "projection_path": "unmapped",
+      "projection_path": "location.government",
       "fallback_events": [
         "CarrierJump",
         "Location"
@@ -10110,7 +10110,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.gravity",
       "fallback_events": [
         "Status"
       ],
@@ -10142,7 +10142,7 @@
       "tier": 4,
       "primary_event": "LoadGame",
       "primary_score": 0.645,
-      "projection_path": "unmapped",
+      "projection_path": "session.group",
       "fallback_events": [],
       "sources": [
         {
@@ -10162,7 +10162,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.gui_focus",
       "fallback_events": [],
       "sources": [
         {
@@ -10202,7 +10202,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "telemetry.heading",
+      "projection_path": "ship.telemetry.heading",
       "fallback_events": [
         "Status",
         "Screenshot"
@@ -10245,7 +10245,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.health",
       "fallback_events": [
         "Status",
         "AfmuRepairs",
@@ -11418,7 +11418,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "telemetry.latitude",
+      "projection_path": "ship.telemetry.latitude",
       "fallback_events": [
         "Status",
         "Liftoff",
@@ -11516,7 +11516,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.91,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.legal_state",
       "fallback_events": [],
       "sources": [
         {
@@ -11952,7 +11952,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "telemetry.longitude",
+      "projection_path": "ship.telemetry.longitude",
       "fallback_events": [
         "Status",
         "Liftoff",
@@ -15593,7 +15593,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.oxygen",
       "fallback_events": [
         "Status"
       ],
@@ -16274,7 +16274,7 @@
       "tier": 2,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.97,
-      "projection_path": "telemetry.pips",
+      "projection_path": "ship.telemetry.pips",
       "fallback_events": [
         "Status"
       ],
@@ -16306,7 +16306,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.planet_radius",
       "fallback_events": [],
       "sources": [
         {
@@ -16483,7 +16483,7 @@
       "tier": 3,
       "primary_event": "FSDJump",
       "primary_score": 0.75,
-      "projection_path": "unmapped",
+      "projection_path": "location.population",
       "fallback_events": [
         "CarrierJump",
         "Location"
@@ -17451,7 +17451,7 @@
       "tier": 4,
       "primary_event": "Loadout",
       "primary_score": 0.705,
-      "projection_path": "unmapped",
+      "projection_path": "ship.rebuy",
       "fallback_events": [],
       "sources": [
         {
@@ -18364,7 +18364,7 @@
       "tier": 3,
       "primary_event": "Docked",
       "primary_score": 0.69,
-      "projection_path": "unmapped",
+      "projection_path": "location.security",
       "fallback_events": [
         "FSDJump",
         "CarrierJump",
@@ -18438,7 +18438,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.735,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.selected_weapon",
       "fallback_events": [],
       "sources": [
         {
@@ -24035,7 +24035,7 @@
       "tier": 4,
       "primary_event": "StatusTelemetry",
       "primary_score": 0.795,
-      "projection_path": "unmapped",
+      "projection_path": "ship.telemetry.temperature",
       "fallback_events": [
         "Status"
       ],

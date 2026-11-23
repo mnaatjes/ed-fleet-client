@@ -8,40 +8,9 @@ from typing import Any
 
 from scripts.pipeline.corpus_miner import EventCadenceMetrics
 from scripts.pipeline.fidelity_scorer import ScoredPropertyDimension
-from scripts.pipeline.schema_inspector import EventSchemaMeta
+from scripts.pipeline.schema_inspector import EventSchemaMeta, discover_projection_targets
 
-PROJECTION_TARGET_MAP: dict[str, str] = {
-    "star_system": "location.star_system",
-    "system_address": "location.system_address",
-    "coordinates": "location.coordinates",
-    "body_name": "location.body_name",
-    "body_id": "location.body_id",
-    "docked": "location.docked",
-    "station_name": "location.station_name",
-    "station_type": "location.station_type",
-    "market_id": "location.market_id",
-    "ship_model": "ship.ship_type",
-    "ship_id": "ship.ship_id",
-    "ship_name": "ship.ship_name",
-    "ship_ident": "ship.ship_ident",
-    "fuel_main": "ship.fuel_main",
-    "fuel_reservoir": "ship.fuel_reservoir",
-    "fuel": "ship.fuel_main",
-    "hull_health": "ship.hull_health",
-    "cargo_capacity": "ship.cargo_capacity",
-    "cmdr_name": "session.cmdr_name",
-    "cmdr_fid": "session.cmdr_fid",
-    "credits": "session.credits",
-    "loan": "session.loan",
-    "game_mode": "session.game_mode",
-    "pips": "telemetry.pips",
-    "flags": "telemetry.flags",
-    "flags2": "telemetry.flags2",
-    "heading": "telemetry.heading",
-    "altitude": "telemetry.altitude",
-    "latitude": "telemetry.latitude",
-    "longitude": "telemetry.longitude",
-}
+PROJECTION_TARGET_MAP: dict[str, str] = discover_projection_targets()
 
 
 class ArtifactSynthesizer:

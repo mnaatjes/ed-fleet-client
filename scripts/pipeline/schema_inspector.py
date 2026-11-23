@@ -247,3 +247,55 @@ class SchemaInspector:
 
         self.property_to_events = rev_index
         return results
+
+
+def discover_projection_targets() -> dict[str, str]:
+    """Dynamically introspects ClientStateProjection dataclasses and StatusTelemetry
+    to discover all valid dot-notation projection paths, mapping canonical property
+    names to their state projection targets.
+    """
+    from typing import get_type_hints
+
+    import ed_fleet_client.core.domain.state.models as state_models
+    from ed_fleet_client.core.domain.state.models import ClientStateProjection
+
+    targets: dict[str, str] = {}
+    client_hints = get_type_hints(ClientStateProjection, vars(state_models))
+
+    # 1. Reflect child dataclasses on ClientStateProjection (location, session, ship)
+    for child_name, child_cls in client_hints.items():
+        if isinstance(child_cls, type) and is_dataclass(child_cls):
+            child_hints = get_type_hints(child_cls, vars(state_models))
+            for prop_name in child_hints:
+                if prop_name in ("last_updated", "__post_init__"):
+                    continue
+                targets[prop_name] = f"{child_name}.{prop_name}"
+
+    # 2. Reflect StatusTelemetry nested under ship.telemetry
+    status_hints = get_type_hints(StatusTelemetry)
+    for st_name in status_hints:
+        if st_name != "additional_fields":
+            targets[st_name] = f"ship.telemetry.{st_name}"
+            targets[st_name.lower()] = f"ship.telemetry.{st_name}"
+
+    # 3. Canonical aliases bridge (mapping normalized event properties to projection fields)
+    aliases: dict[str, str] = {
+        "coordinates": "location.star_pos",
+        "body_name": "location.body",
+        "ship_model": "ship.ship_type",
+        "cmdr_name": "session.commander_name",
+        "cmdr_fid": "session.fid",
+        "fuel_main": "ship.telemetry.fuel_main",
+        "fuel_reservoir": "ship.telemetry.fuel_reservoir",
+        "fuel": "ship.telemetry.fuel_main",
+        "hull_health": "ship.hull_health",
+        "pips": "ship.telemetry.pips",
+        "flags": "ship.telemetry.flags",
+        "flags2": "ship.telemetry.flags2",
+        "heading": "ship.telemetry.heading",
+        "altitude": "ship.telemetry.altitude",
+        "latitude": "ship.telemetry.latitude",
+        "longitude": "ship.telemetry.longitude",
+    }
+    targets.update(aliases)
+    return targets
