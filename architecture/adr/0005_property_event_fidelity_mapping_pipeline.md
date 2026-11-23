@@ -209,3 +209,28 @@ To eliminate manual ledger maintenance and preserve the single-source-of-truth p
 1. **Dynamic Dataclass Introspection:** `scripts/pipeline/schema_inspector.py` dynamically introspects `ClientStateProjection` and its nested projection classes (`LocationProjection`, `SessionProjection`, `ShipProjection`) using `dataclasses.fields()`.
 2. **Deterministic Dot-Notation Derivation:** The pipeline automatically builds dot-notation target paths (e.g. `location.star_system`, `session.commander_name`, `ship.cargo_capacity`) from domain models at pipeline execution time.
 3. **Automated Architectural Gate:** Architecture tests (`tests/architecture/test_property_event_matrix.py`) assert that all domain projection fields are properly resolved without requiring duplicate YAML or dictionary registries.
+
+---
+
+## 10. Addendum 2: Deterministic Diataxis Reference Generation for State Projections & Reducers (2026-11-23)
+
+### Context & Decision
+To eliminate human documentation drift and LLM hallucination in developer manuals, the pipeline is expanded to deterministically generate Diataxis Reference documentation (`docs/reference/state_projections_and_reducers.md`).
+
+1. **Domain Model Field Descriptions:** Domain projection classes (`LocationProjection`, `SessionProjection`, `ShipProjection`) in `core/domain/state/models.py` declare authoritative field descriptions directly via `field(metadata={"description": "..."})`.
+2. **Deterministic Synthesizer:** `scripts/pipeline/artifact_synthesizer.py` introspects field metadata, types, defaults, and primary/fallback reducing events discovered by `SchemaInspector`.
+3. **Diataxis Conformance:** Produces clean Diataxis Reference tables indexed by projection sub-domain, articulating the operational meaning of every reduced property, its Python type, default value, and triggering journal events.
+
+---
+
+## 11. Addendum 3: Deterministic Event-Only (Unmapped) Telemetry Catalog Generation (2026-11-23)
+
+### Context & Decision
+A significant portion of Elite Dangerous telemetry consists of ephemeral, transactional, or domain-specific data points (e.g., market transactions, mission updates, cargo ejections, combat events) that are not folded into long-lived state projections. Developers need an authoritative reference to determine which async events expose these properties and how to subscribe to them.
+
+1. **Deterministic Cataloging:** `scripts/pipeline/artifact_synthesizer.py` identifies all properties where `projection_path == "unmapped"` and generates `docs/reference/event_streaming_catalog.md`.
+2. **Three-Tier Developer Reference Plane:**
+   - **`docs/reference/state_projections_and_reducers.md`:** Synchronous state snapshot accessors (`client.location`, `client.ship`, `client.session`).
+   - **`docs/reference/canonical_property_map.md`:** Comprehensive property-to-event directory with fidelity scores.
+   - **`docs/reference/event_streaming_catalog.md`:** Reactive async event subscription guide for all non-reduced telemetry.
+3. **Automated Governance:** Verified by architectural tests ensuring all unmapped properties have documented primary listening events and code subscription patterns.

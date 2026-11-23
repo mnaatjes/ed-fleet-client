@@ -101,8 +101,10 @@ def test_generated_json_artifact_schema_and_integrity() -> None:
 def test_generated_markdown_artifacts_exist_and_conform_to_frontmatter() -> None:
     arch_md = REPO_ROOT / "architecture" / "reference" / "property_fidelity_matrix.md"
     docs_md = REPO_ROOT / "docs" / "reference" / "canonical_property_map.md"
+    reducers_md = REPO_ROOT / "docs" / "reference" / "state_projections_and_reducers.md"
+    unmapped_md = REPO_ROOT / "docs" / "reference" / "event_streaming_catalog.md"
 
-    for path in (arch_md, docs_md):
+    for path in (arch_md, docs_md, reducers_md, unmapped_md):
         assert path.exists(), f"Markdown artifact not found: {path}"
         content = path.read_text(encoding="utf-8")
         assert content.startswith("---\n"), f"Missing YAML frontmatter in {path}"
@@ -135,3 +137,25 @@ def test_discover_projection_targets_reflects_domain_models() -> None:
     assert targets["pips"] == "ship.telemetry.pips"
     assert targets["flags"] == "ship.telemetry.flags"
     assert targets["fuel_main"] == "ship.telemetry.fuel_main"
+
+
+def test_inspect_projection_metadata_extracts_all_projections() -> None:
+    from scripts.pipeline.schema_inspector import inspect_projection_metadata
+
+    docs = inspect_projection_metadata()
+    assert len(docs) == 4
+
+    proj_names = [d.projection_name for d in docs]
+    assert "LocationProjection" in proj_names
+    assert "SessionProjection" in proj_names
+    assert "ShipProjection" in proj_names
+    assert "ClientStateProjection" in proj_names
+
+    # Check LocationProjection field count and metadata presence
+    loc_doc = next(d for d in docs if d.projection_name == "LocationProjection")
+    assert len(loc_doc.fields) >= 15
+    field_names = [f.field_name for f in loc_doc.fields]
+    assert "star_system" in field_names
+    assert "docked" in field_names
+    star_system_field = next(f for f in loc_doc.fields if f.field_name == "star_system")
+    assert "Authoritative current star system" in star_system_field.description

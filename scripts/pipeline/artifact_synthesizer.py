@@ -8,7 +8,11 @@ from typing import Any
 
 from scripts.pipeline.corpus_miner import EventCadenceMetrics
 from scripts.pipeline.fidelity_scorer import ScoredPropertyDimension
-from scripts.pipeline.schema_inspector import EventSchemaMeta, discover_projection_targets
+from scripts.pipeline.schema_inspector import (
+    EventSchemaMeta,
+    discover_projection_targets,
+    inspect_projection_metadata,
+)
 
 PROJECTION_TARGET_MAP: dict[str, str] = discover_projection_targets()
 
@@ -242,6 +246,187 @@ class ArtifactSynthesizer:
                 ),
             ]
         )
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+    def render_reducer_reference(self, output_path: Path | str) -> None:
+        """Render Diataxis Reference manual for materialized state projections and reducers."""
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        projection_docs = inspect_projection_metadata()
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        lines: list[str] = [
+            "---",
+            'title: "State Projections & Reducer Reference"',
+            'tags: ["telemetry", "state", "projections", "reducers", "reference", "diataxis"]',
+            f'created_at: "{today}"',
+            f'last_updated_at: "{today}"',
+            "---",
+            "",
+            "# State Projections & Reducer Reference",
+            "",
+            "> [!NOTE]",
+            (
+                f"> Deterministically generated from **`ed-models` v{self.version}** and "
+                "`ed_fleet_client.core.domain.state.models` dataclass reflection."
+            ),
+            "",
+            "## Overview",
+            "",
+            (
+                "`ed-fleet-client` maintains an in-memory, thread-safe reactive state projection "
+                "through `TelemetryStateEngine`. As telemetry and journal events arrive, pure "
+                "reducer functions (`reduce_location`, `reduce_session`, `reduce_ship`) fold event "
+                "payloads into immutable state projections."
+            ),
+            (
+                "Applications read materialized state via top-level accessors on "
+                "`EliteDangerousClient`:"
+            ),
+            (
+                "- `client.location` $\\to$ "
+                "[`LocationProjection`](#1-locationprojection-clientlocation)"
+            ),
+            (
+                "- `client.session` $\\to$ "
+                "[`SessionProjection`](#2-sessionprojection-clientsession)"
+            ),
+            "- `client.ship` $\\to$ [`ShipProjection`](#3-shipprojection-clientship)",
+            (
+                "- `client.state` $\\to$ "
+                "[`ClientStateProjection`](#4-clientstateprojection-clientstate)"
+            ),
+            "",
+            "---",
+            "",
+        ]
+
+        section_idx = 1
+        for p_doc in projection_docs:
+            lines.extend(
+                [
+                    f"## {section_idx}. {p_doc.projection_name} (`{p_doc.accessor}`)",
+                    "",
+                    f"{p_doc.description}",
+                    "",
+                    "| Attribute | Type | Default | Authoritative Source | Description |",
+                    "| :--- | :--- | :--- | :--- | :--- |",
+                ]
+            )
+
+            for f_doc in p_doc.fields:
+                dim = self.dimensions.get(f_doc.field_name)
+                primary_ev = f"`{dim.primary_event}`" if dim else "*state-internal*"
+                type_display = f"`{f_doc.type_annotation}`"
+                default_display = f"`{f_doc.default_repr}`" if f_doc.default_repr else "—"
+                desc_display = f_doc.description or "—"
+
+                lines.append(
+                    f"| `{f_doc.field_name}` | {type_display} | {default_display} | "
+                    f"{primary_ev} | {desc_display} |"
+                )
+
+            lines.extend(["", "---", ""])
+            section_idx += 1
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+    def render_unmapped_catalog(self, output_path: Path | str) -> None:
+        """Render Diataxis Reference catalog for event-only (unmapped) telemetry properties."""
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        # Collect unmapped properties grouped by tier
+        tier_names = {
+            1: "Tier 1: Core Navigation & Session Identity",
+            2: "Tier 2: Operational Vessel & Flight Telemetry",
+            3: "Tier 3: Contextual, Exploration & Market Data",
+            4: "Tier 4: Granular, Ephemeral & Event-Specific Payload Data",
+        }
+
+        unmapped_by_tier: dict[int, list[ScoredPropertyDimension]] = {1: [], 2: [], 3: [], 4: []}
+        for prop_name, dim in self.dimensions.items():
+            if PROJECTION_TARGET_MAP.get(prop_name) is None:
+                unmapped_by_tier[dim.tier].append(dim)
+
+        total_unmapped = sum(len(props) for props in unmapped_by_tier.values())
+
+        lines: list[str] = [
+            "---",
+            'title: "Event-Only Telemetry Streaming Catalog"',
+            'tags: ["telemetry", "events", "streaming", "catalog", "unmapped", "reference"]',
+            f'created_at: "{today}"',
+            f'last_updated_at: "{today}"',
+            "---",
+            "",
+            "# Event-Only Telemetry Streaming Catalog",
+            "",
+            "> [!NOTE]",
+            (
+                f"> Deterministically generated from **`ed-models` v{self.version}**. "
+                f"Catalogs all {total_unmapped} telemetry properties available exclusively "
+                "via asynchronous event streaming rather than state projections."
+            ),
+            "",
+            "## How to Consume Event-Only Properties",
+            "",
+            (
+                "Properties in this catalog are not held in long-lived state projections. "
+                "Instead, applications subscribe directly to the event schemas that emit them "
+                "using the client event dispatcher:"
+            ),
+            "",
+            "```python",
+            "from ed_models.core.domain.events import EjectCargo",
+            "",
+            "@client.on(EjectCargo)",
+            "def on_cargo_ejected(event: EjectCargo) -> None:",
+            "    # Read event-only properties directly from the hydrated event",
+            "    is_abandoned = event.Abandoned",
+            "    cargo_type = event.Type",
+            "```",
+            "",
+            "---",
+            "",
+        ]
+
+        section_idx = 1
+        for tier in sorted(unmapped_by_tier.keys()):
+            props = sorted(unmapped_by_tier[tier], key=lambda d: d.property_name)
+            if not props:
+                continue
+
+            tier_title = tier_names.get(tier, f"Tier {tier}")
+            lines.extend(
+                [
+                    f"## {section_idx}. {tier_title} ({len(props)} Properties)",
+                    "",
+                    "| Property | Primary Event | Fidelity | Fallback Events |",
+                    "| :--- | :--- | :---: | :--- |",
+                ]
+            )
+
+            for d in props:
+                primary = f"`{d.primary_event}`" if d.primary_event else "*none*"
+                score_str = f"{d.primary_score:.2f}"
+                fallbacks = (
+                    ", ".join(f"`{ev}`" for ev in d.fallback_events[:3])
+                    if d.fallback_events
+                    else "—"
+                )
+                if len(d.fallback_events) > 3:
+                    fallbacks += f" *(+{len(d.fallback_events) - 3} more)*"
+
+                lines.append(f"| `{d.property_name}` | {primary} | {score_str} | {fallbacks} |")
+
+            lines.extend(["", "---", ""])
+            section_idx += 1
 
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
