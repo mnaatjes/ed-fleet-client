@@ -309,3 +309,58 @@ flowchart TD
 ```
 
 By placing invariant gates at the boundary before reduction, `client.location` and `client.ship` remain 100% reliable, physically consistent, and clean of telemetry glitches.
+
+---
+
+## 11. State Consumption Patterns: Push vs. Pull (The Game Loop)
+
+Once state is safely folded into memory by reducers, how do consumer applications read it? There are two primary paradigms:
+
+```mermaid
+flowchart TD
+    subgraph Pull ["Pull Paradigm: In-Memory State Sampling (Game Loop)"]
+        Loop["while True: (Every 500ms / 16ms)"] --> Read["Read client.location.star_system\n(Instant synchronous read from RAM)"]
+        Read --> Render["Render HUD / Console Dashboard"]
+    end
+
+    subgraph Push ["Push Paradigm: Event-Driven Subscription"]
+        Event["Inbound FSDJump arrives"] --> Dispatcher["Dispatcher alerts @client.on"]
+        Dispatcher --> Callback["Execute on_jump(event) callback"]
+    end
+```
+
+### Pattern Names and Terminology
+
+Depending on your engineering discipline, continuously reading state in a loop goes by several formal names:
+
+1. **The Game Loop / Render Tick Pattern (Gaming & Simulation):**
+   In cockpit simulators and games, user interfaces redraw on a fixed frame budget (e.g., 60 FPS = every 16.6ms, or 2 Hz = every 500ms). Rather than waiting for events, the loop ticks forward, samples `client.location` and `client.ship` directly from memory, and paints the screen:
+   ```python
+   while running:
+       draw_hud(
+           system=client.location.star_system,
+           fuel=client.ship.telemetry.fuel_main if client.ship.telemetry else 0.0,
+       )
+       await asyncio.sleep(0.016)  # 60 FPS tick
+   ```
+
+2. **In-Memory State Sampling / Polling Loop (Control Planes & Systems):**
+   Repeatedly inspecting an in-memory variable on a timer is called **State Polling** or **Sampling**.
+   - **Crucial Distinction:** Unlike *network polling* (which spam-requests an HTTP server over Wi-Fi and wastes bandwidth), **in-memory sampling** reads local RAM that has already been hydrated in the background. It executes in nanoseconds with virtually zero CPU overhead.
+
+3. **Immediate-Mode State Consumption (UI Architecture):**
+   In modern immediate-mode UI frameworks (like Dear ImGui, Unity, and Flutter), widgets do not retain their own copies of text or state. Instead, they re-query the authoritative state store on every render pass.
+
+4. **CQRS Projection Sampling (Software Architecture):**
+   Under Command Query Responsibility Segregation (CQRS):
+   - The background telemetry stream and reducers represent the **Write Model** (ingesting events and folding them into memory).
+   - `client.location`, `client.ship`, and `client.session` represent the **Read Model** (materialized state projections).
+   - The consumer's while loop represents the **Query Execution** sampling the read model.
+
+### Choosing Between Loops and Event Listeners
+
+| Application Need | Recommended Pattern | Code Recipe |
+| :--- | :--- | :--- |
+| **HUDs, GUIs, Overlays, Web Dashboards** | **Game Loop / State Sampling** | `while True: print(client.location.star_system); await asyncio.sleep(0.5)` |
+| **Alerts, Sound Effects, Discord Bots** | **Event Listener (`@client.on`)** | `@client.on(FSDJump)` $\to$ `play_sound("jump.wav")` |
+| **Sequential Procedural Scripts** | **One-Shot Awaiter (`wait_for`)** | `await client.wait_for(FSDJump)` |
