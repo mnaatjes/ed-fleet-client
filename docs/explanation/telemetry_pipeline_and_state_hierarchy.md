@@ -110,3 +110,24 @@ async with EliteDangerousClient() as client:
         if event.Abandoned:
             print(f"Jettisoned abandoned cargo: {event.Type}")
 ```
+
+---
+
+## 5. Dispatch Granularity vs. Property Granularity
+
+A common architectural question is whether the async event bus dispatches at the individual property level (e.g., `@client.on("star_system")`) or at the dataclass event level.
+
+The event bus operates with a **strict 1:1 mapping at the event dataclass level**, preserving Frontier transaction boundaries and avoiding dispatch overhead. Individual property granularity is resolved inside the callback or via state projections:
+
+```mermaid
+flowchart LR
+    Event["ed_models.events.EjectCargo\n(Event Dataclass)"] -->|"@client.on(EjectCargo)"| Handler["Listener Function\ndef on_cargo(event: EjectCargo):"]
+    Handler --> Prop1["event.Type (Property)"]
+    Handler --> Prop2["event.Count (Property)"]
+    Handler --> Prop3["event.Abandoned (Property)"]
+```
+
+### Architectural Rationale
+1. **Transaction Integrity:** Frontier telemetry arrives in atomic journal packets containing multiple related attributes (e.g., `EjectCargo` simultaneously reports cargo type, count, mission status, and abandoned state). Discarding the envelope to dispatch individual property scalars would destroy contextual coherence.
+2. **Polymorphic Subscriptions:** The dispatcher matches Python classes, allowing applications to subscribe to specific events (`@client.on(FSDJump)`), broad journal categories (`@client.on(JournalEvent)`), or high-frequency telemetry frames (`@client.on(StatusTelemetry)`).
+3. **Role of Property Mapping:** The generated reference catalogs (`canonical_property_map.md` and `event_streaming_catalog.md`) index data by property because developers typically approach telemetry with a question about a specific attribute (e.g., *"How do I track `hull_health`?"*). The catalog maps that property back to its enclosing event class (`Loadout`, `StatusTelemetry`) for subscription.
