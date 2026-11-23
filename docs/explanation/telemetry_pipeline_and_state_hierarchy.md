@@ -131,3 +131,55 @@ flowchart LR
 1. **Transaction Integrity:** Frontier telemetry arrives in atomic journal packets containing multiple related attributes (e.g., `EjectCargo` simultaneously reports cargo type, count, mission status, and abandoned state). Discarding the envelope to dispatch individual property scalars would destroy contextual coherence.
 2. **Polymorphic Subscriptions:** The dispatcher matches Python classes, allowing applications to subscribe to specific events (`@client.on(FSDJump)`), broad journal categories (`@client.on(JournalEvent)`), or high-frequency telemetry frames (`@client.on(StatusTelemetry)`).
 3. **Role of Property Mapping:** The generated reference catalogs (`canonical_property_map.md` and `event_streaming_catalog.md`) index data by property because developers typically approach telemetry with a question about a specific attribute (e.g., *"How do I track `hull_health`?"*). The catalog maps that property back to its enclosing event class (`Loadout`, `StatusTelemetry`) for subscription.
+
+---
+
+## 6. Temporal State Synthesis: How Reducers Merge Disparate Events
+
+In *Elite Dangerous*, no individual event emits a complete picture of the vessel or commander. Instead, state is emitted piecemeal as flight transitions occur over time.
+
+### Multi-Event Folding into Projections ($N:1$)
+
+Pure reducers accumulate and fold discrete fields across multiple disparate event classes into a single unified projection dataclass:
+
+```mermaid
+flowchart TD
+    E1["FSDJump Event\n(Emits star_system, system_address, allegiance, coordinates)"] --> Reducer["reduce_location()"]
+    E2["ApproachBody Event\n(Emits body, body_id)"] --> Reducer
+    E3["Docked Event\n(Emits station_name, station_type, market_id)"] --> Reducer
+    E4["SupercruiseEntry Event\n(Emits in_supercruise=True)"] --> Reducer
+
+    Reducer --> State["LocationProjection\n(Current Single Snapshot in client.location)\n{\n  star_system: 'Sol',\n  body: 'Earth',\n  station_name: 'Abraham Lincoln',\n  docked: True,\n  ...\n}"]
+```
+
+- When `FSDJump` occurs, `reduce_location` updates `star_system` and spatial coordinates while resetting docked status.
+- When `ApproachBody` follows minutes later, `reduce_location` updates `body` and `body_id`, retaining the previously recorded `star_system`.
+- When `Docked` arrives at a space station, `reduce_location` sets `docked=True` and populates `station_name` without erasing prior astronomical data.
+
+### Parallel Divergence: Reducer vs. Dispatcher
+
+Reducers do **not** rely on `TelemetryEventDispatcher`. The event bus is **not** a prerequisite for state reduction. When an inbound packet arrives, the dataflow immediately branches into two independent paths:
+
+```mermaid
+flowchart TD
+    Hydrated["Hydrated ed-models Dataclass\n(e.g. FSDJump)"]
+
+    subgraph Divergence ["The Parallel Split"]
+        Hydrated -->|"Path A: State Reduction (Synchronous)"| ReducerFn["Pure Reducer Function\n(reduce_location)"]
+        Hydrated -->|"Path B: Event Bus Fanout (Concurrent)"| Dispatcher["TelemetryEventDispatcher\n(@client.on)"]
+    end
+
+    ReducerFn --> StateProj["client.location\n(Materialized Snapshot)"]
+    Dispatcher --> Callback["User Async Callback\n(on_fsd_jump)"]
+```
+
+### Architectural Distinctions
+
+| Dimension | Reducer Layer (`client.state.*`) | Async Event Bus (`@client.on(...)`) |
+| :--- | :--- | :--- |
+| **Relationship to `ed-models`** | **Consumer / Fold Function:** Reads specific fields off diverse event models to update state. | **Direct Container / Matcher:** Dispatches the entire event model intact to registered callbacks. |
+| **Relationship to Each Other** | **None.** Does not listen to, invoke, or depend on `@client.on(...)`. | **None.** Does not read from or depend on `client.state`. |
+| **Cardinality to Events** | **$N:1$ (Many-to-One):** Dozens of distinct event classes merge into 1 projection. | **$1:1$ (One-to-One):** 1 `@client.on(EventClass)` matches 1 event class. |
+| **Execution Timing** | Executes **first**, synchronously updating in-memory state. | Executes **second**, asynchronously invoking user callbacks. |
+| **Data Scope** | 46 core navigation, session, and ship attributes. | All 566 properties across all 287 Frontier events. |
+| **Failure Domain** | Isolated under thread-safe state engine locks. | User handler errors are caught and recorded as `HandlerFailure`. |
