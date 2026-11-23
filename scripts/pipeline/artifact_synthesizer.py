@@ -8,7 +8,11 @@ from typing import Any
 
 from scripts.pipeline.corpus_miner import EventCadenceMetrics
 from scripts.pipeline.fidelity_scorer import ScoredPropertyDimension
-from scripts.pipeline.schema_inspector import EventSchemaMeta, discover_projection_targets
+from scripts.pipeline.schema_inspector import (
+    EventSchemaMeta,
+    discover_projection_targets,
+    inspect_projection_metadata,
+)
 
 PROJECTION_TARGET_MAP: dict[str, str] = discover_projection_targets()
 
@@ -242,6 +246,91 @@ class ArtifactSynthesizer:
                 ),
             ]
         )
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+    def render_reducer_reference(self, output_path: Path | str) -> None:
+        """Render Diataxis Reference manual for materialized state projections and reducers."""
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        projection_docs = inspect_projection_metadata()
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        lines: list[str] = [
+            "---",
+            'title: "State Projections & Reducer Reference"',
+            'tags: ["telemetry", "state", "projections", "reducers", "reference", "diataxis"]',
+            f'created_at: "{today}"',
+            f'last_updated_at: "{today}"',
+            "---",
+            "",
+            "# State Projections & Reducer Reference",
+            "",
+            "> [!NOTE]",
+            (
+                f"> Deterministically generated from **`ed-models` v{self.version}** and "
+                "`ed_fleet_client.core.domain.state.models` dataclass reflection."
+            ),
+            "",
+            "## Overview",
+            "",
+            (
+                "`ed-fleet-client` maintains an in-memory, thread-safe reactive state projection "
+                "through `TelemetryStateEngine`. As telemetry and journal events arrive, pure "
+                "reducer functions (`reduce_location`, `reduce_session`, `reduce_ship`) fold event "
+                "payloads into immutable state projections."
+            ),
+            (
+                "Applications read materialized state via top-level accessors on "
+                "`EliteDangerousClient`:"
+            ),
+            (
+                "- `client.location` $\\to$ "
+                "[`LocationProjection`](#1-locationprojection-clientlocation)"
+            ),
+            (
+                "- `client.session` $\\to$ "
+                "[`SessionProjection`](#2-sessionprojection-clientsession)"
+            ),
+            "- `client.ship` $\\to$ [`ShipProjection`](#3-shipprojection-clientship)",
+            (
+                "- `client.state` $\\to$ "
+                "[`ClientStateProjection`](#4-clientstateprojection-clientstate)"
+            ),
+            "",
+            "---",
+            "",
+        ]
+
+        section_idx = 1
+        for p_doc in projection_docs:
+            lines.extend(
+                [
+                    f"## {section_idx}. {p_doc.projection_name} (`{p_doc.accessor}`)",
+                    "",
+                    f"{p_doc.description}",
+                    "",
+                    "| Attribute | Type | Default | Authoritative Source | Description |",
+                    "| :--- | :--- | :--- | :--- | :--- |",
+                ]
+            )
+
+            for f_doc in p_doc.fields:
+                dim = self.dimensions.get(f_doc.field_name)
+                primary_ev = f"`{dim.primary_event}`" if dim else "*state-internal*"
+                type_display = f"`{f_doc.type_annotation}`"
+                default_display = f"`{f_doc.default_repr}`" if f_doc.default_repr else "—"
+                desc_display = f_doc.description or "—"
+
+                lines.append(
+                    f"| `{f_doc.field_name}` | {type_display} | {default_display} | "
+                    f"{primary_ev} | {desc_display} |"
+                )
+
+            lines.extend(["", "---", ""])
+            section_idx += 1
 
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")

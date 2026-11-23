@@ -209,3 +209,14 @@ To eliminate manual ledger maintenance and preserve the single-source-of-truth p
 1. **Dynamic Dataclass Introspection:** `scripts/pipeline/schema_inspector.py` dynamically introspects `ClientStateProjection` and its nested projection classes (`LocationProjection`, `SessionProjection`, `ShipProjection`) using `dataclasses.fields()`.
 2. **Deterministic Dot-Notation Derivation:** The pipeline automatically builds dot-notation target paths (e.g. `location.star_system`, `session.commander_name`, `ship.cargo_capacity`) from domain models at pipeline execution time.
 3. **Automated Architectural Gate:** Architecture tests (`tests/architecture/test_property_event_matrix.py`) assert that all domain projection fields are properly resolved without requiring duplicate YAML or dictionary registries.
+
+---
+
+## 10. Addendum 2: Deterministic Diataxis Reference Generation for State Projections & Reducers (2026-11-23)
+
+### Context & Decision
+To eliminate human documentation drift and LLM hallucination in developer manuals, the pipeline is expanded to deterministically generate Diataxis Reference documentation (`docs/reference/state_projections_and_reducers.md`).
+
+1. **Domain Model Field Descriptions:** Domain projection classes (`LocationProjection`, `SessionProjection`, `ShipProjection`) in `core/domain/state/models.py` declare authoritative field descriptions directly via `field(metadata={"description": "..."})`.
+2. **Deterministic Synthesizer:** `scripts/pipeline/artifact_synthesizer.py` introspects field metadata, types, defaults, and primary/fallback reducing events discovered by `SchemaInspector`.
+3. **Diataxis Conformance:** Produces clean Diataxis Reference tables indexed by projection sub-domain, articulating the operational meaning of every reduced property, its Python type, default value, and triggering journal events.

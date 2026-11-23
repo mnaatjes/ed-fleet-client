@@ -52,6 +52,11 @@ def main() -> int:
         help="Custom output path for Diataxis reference guide",
     )
     parser.add_argument(
+        "--out-reducers",
+        default=str(REPO_ROOT / "docs" / "reference" / "state_projections_and_reducers.md"),
+        help="Custom output path for Diataxis state projections and reducers manual",
+    )
+    parser.add_argument(
         "--skip-version-check",
         action="store_true",
         help="Bypass strict version validation between pyproject.toml and ed-models",
@@ -135,6 +140,11 @@ def main() -> int:
     docs_path = Path(args.out_docs)
     synthesizer.render_diataxis_reference(docs_path)
     print(f"      - Diataxis Reference: {docs_path}")
+
+    # 5d. Diataxis Reducer Reference Manual
+    reducers_path = Path(args.out_reducers)
+    synthesizer.render_reducer_reference(reducers_path)
+    print(f"      - Reducer Reference:  {reducers_path}")
 
     print("\nPipeline execution complete. All artifacts generated deterministically.")
     return 0

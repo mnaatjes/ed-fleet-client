@@ -1,5 +1,6 @@
 """AST Schema reflection and property classification for ed-models."""
 
+import dataclasses
 import inspect
 from dataclasses import dataclass, fields, is_dataclass
 from typing import get_type_hints
@@ -299,3 +300,90 @@ def discover_projection_targets() -> dict[str, str]:
     }
     targets.update(aliases)
     return targets
+
+
+@dataclass(frozen=True)
+class ProjectionFieldDoc:
+    """Metadata documenting a single materialized projection property."""
+
+    field_name: str
+    target_path: str
+    type_annotation: str
+    default_repr: str
+    description: str
+
+
+@dataclass(frozen=True)
+class ProjectionDoc:
+    """Metadata documenting a state projection dataclass."""
+
+    projection_name: str
+    accessor: str
+    description: str
+    fields: list[ProjectionFieldDoc]
+
+
+def inspect_projection_metadata() -> list[ProjectionDoc]:
+    """Inspects all state projection dataclasses on ClientStateProjection and
+    extracts field names, type annotations, defaults, and doc metadata.
+    """
+    from ed_fleet_client.core.domain.state.models import (
+        ClientStateProjection,
+        LocationProjection,
+        SessionProjection,
+        ShipProjection,
+    )
+
+    docs: list[ProjectionDoc] = []
+    classes = [
+        ("LocationProjection", "client.location", LocationProjection),
+        ("SessionProjection", "client.session", SessionProjection),
+        ("ShipProjection", "client.ship", ShipProjection),
+        ("ClientStateProjection", "client.state", ClientStateProjection),
+    ]
+
+    for cls_name, accessor, cls_type in classes:
+        cls_doc = (cls_type.__doc__ or "").strip()
+        field_docs: list[ProjectionFieldDoc] = []
+        for f in fields(cls_type):
+            if f.name in ("__post_init__",):
+                continue
+            default_val = f.default
+            if default_val is dataclasses.MISSING:
+                if f.default_factory is not dataclasses.MISSING:
+                    default_repr = "<computed>"
+                else:
+                    default_repr = ""
+            elif isinstance(default_val, str):
+                default_repr = f'"{default_val}"' if default_val else '""'
+            else:
+                default_repr = repr(default_val)
+
+            desc = f.metadata.get("description", "")
+            type_str = str(f.type)
+            target_path = (
+                f"{accessor.split('.')[-1]}.{f.name}"
+                if accessor != "client.state"
+                else f"state.{f.name}"
+            )
+
+            field_docs.append(
+                ProjectionFieldDoc(
+                    field_name=f.name,
+                    target_path=target_path,
+                    type_annotation=type_str,
+                    default_repr=default_repr,
+                    description=desc,
+                )
+            )
+
+        docs.append(
+            ProjectionDoc(
+                projection_name=cls_name,
+                accessor=accessor,
+                description=cls_doc,
+                fields=field_docs,
+            )
+        )
+
+    return docs
