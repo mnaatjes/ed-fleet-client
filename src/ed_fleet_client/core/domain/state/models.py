@@ -61,9 +61,11 @@ class ShipProjection:
     """Materialized projection of ship status and loadout attributes."""
 
     ship_type: str = ""
+    ship_id: int | None = None
     ship_name: str = ""
     ship_ident: str = ""
     hull_value: int = 0
+    hull_health: float = 1.0
     modules_value: int = 0
     rebuy: int = 0
     unladen_mass: float = 0.0

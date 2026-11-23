@@ -195,9 +195,13 @@ def reduce_ship(
 
     if ev_name == "Loadout":
         ship_type = getattr(event, "Ship", current.ship_type)
+        ship_id_val = getattr(event, "ShipID", current.ship_id)
+        ship_id = int(ship_id_val) if ship_id_val is not None else current.ship_id
         ship_name = getattr(event, "ShipName", current.ship_name)
         ship_ident = getattr(event, "ShipIdent", current.ship_ident)
         hull_val = int(getattr(event, "HullValue", current.hull_value) or 0)
+        hull_health_val = getattr(event, "HullHealth", current.hull_health)
+        hull_health = float(hull_health_val) if hull_health_val is not None else current.hull_health
         mods_val = int(getattr(event, "ModulesValue", current.modules_value) or 0)
         rebuy = int(getattr(event, "Rebuy", current.rebuy) or 0)
         unladen_mass = float(getattr(event, "UnladenMass", current.unladen_mass) or 0.0)
@@ -207,9 +211,11 @@ def reduce_ship(
         return replace(
             current,
             ship_type=ship_type,
+            ship_id=ship_id,
             ship_name=ship_name,
             ship_ident=ship_ident,
             hull_value=hull_val,
+            hull_health=hull_health,
             modules_value=mods_val,
             rebuy=rebuy,
             unladen_mass=unladen_mass,

@@ -110,3 +110,28 @@ def test_generated_markdown_artifacts_exist_and_conform_to_frontmatter() -> None
         assert "tags: [" in content
         assert 'created_at: "' in content
         assert 'last_updated_at: "' in content
+
+
+def test_discover_projection_targets_reflects_domain_models() -> None:
+    from scripts.pipeline.schema_inspector import discover_projection_targets
+
+    targets = discover_projection_targets()
+
+    # Verify core domain model fields are automatically discovered
+    assert "star_system" in targets
+    assert targets["star_system"] == "location.star_system"
+    assert "commander_name" in targets
+    assert targets["commander_name"] == "session.commander_name"
+    assert "ship_type" in targets
+    assert targets["ship_type"] == "ship.ship_type"
+    assert "ship_id" in targets
+    assert targets["ship_id"] == "ship.ship_id"
+    assert "hull_health" in targets
+    assert targets["hull_health"] == "ship.hull_health"
+
+    # Verify canonical aliases resolve accurately
+    assert targets["coordinates"] == "location.star_pos"
+    assert targets["body_name"] == "location.body"
+    assert targets["pips"] == "ship.telemetry.pips"
+    assert targets["flags"] == "ship.telemetry.flags"
+    assert targets["fuel_main"] == "ship.telemetry.fuel_main"
