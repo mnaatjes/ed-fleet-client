@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Added draft architecture record `architecture/adr/drafts/empirical_telemetry_ingestion_and_bayesian_smoothing.md` specifying future Bayesian smoothing and regime-conditioned empirical mining.
 - Added draft architecture record `architecture/adr/drafts/decoupling_state_and_event_client_repositories.md` specifying decoupling into `ed-state-client` and `ed-event-client` repositories with full directory topologies, boundary models, and key-concept maps (deferring composite facade SDK).
 - Added comprehensive cross-repository bibliography and source index `architecture/reference/telemetry_state_and_mutex_invariants_bibliography.md` documenting research papers, mutex heat matrices, JSON contracts, and state reducer ADRs across `ed-integration-smoke`, `ed-resolver`, and `ed-fleet-client`.
+- Added cross-client process analysis document `architecture/notes/cross_client_shared_and_redundant_processes.md` detailing identical ingestion pipelines, envelope unwrapping, `ed-models` hydration, endpoint interaction with `ed-telemetry`, and behavioral divergence between `ed-state-client` and `ed-event-client`.
 
 > Context Hydration Reference: `9acf5e6f-6a6a-4b31-8053-d855ac8f3d00`
 
