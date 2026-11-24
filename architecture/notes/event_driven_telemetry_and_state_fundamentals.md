@@ -2,117 +2,126 @@
 title: "Event-Driven Telemetry and State Fundamentals"
 tags: ["architecture", "eda", "state-store", "reducers", "concurrency", "notes", "primer"]
 created_at: "2026-11-23"
-last_updated_at: "2026-11-23"
+last_updated_at: "2026-11-24"
 ---
 
 # Event-Driven Telemetry and State Fundamentals
 
-This engineering primer breaks down the core concepts behind event-driven architecture, streaming data pipelines, state engines, and concurrency controls used within `ed-fleet-client`. Every section uses everyday analogies, diagrams, and direct code examples to illustrate how these ideas fit together.
+This engineering primer establishes universal software engineering best practices for building robust reactive systems, stream processing pipelines, and state projection engines. To ensure clear conceptual mastery, all examples throughout this guide use domain-agnostic scenarios (such as smart thermostat telemetry, bank transaction streams, and autonomous vehicle tracking).
 
 ---
 
 ## 1. Event-Driven Architecture (EDA) & Best Practices
 
 ### What Is It?
-In traditional request-response programming, one part of your code directly tells another part what to do: *"Hey function B, run right now and give me an answer."* Both sides are tightly coupled together.
+In traditional request-response programming, one component directly commands another: *"Run function X right now and return a result."* Both sides are tightly coupled.
 
-In an **Event-Driven Architecture (EDA)**, software components communicate by announcing that something significant has already happened in the outside world. This announcement is called an **Event**.
+In an **Event-Driven Architecture (EDA)**, software components communicate by announcing that an immutable state change has already occurred. This announcement is called an **Event**.
 
-- **The Producer:** Announces: *"A jump happened: we arrived at system Sol."* The producer does not know or care who is listening.
-- **The Consumer:** Listens for events it cares about and reacts independently (e.g., updating a map, playing an alert sound, logging to disk).
+- **The Producer:** Broadcasts an occurrence (e.g., *"Temperature changed to 22.5°C"* or *"Account 101 deposited $500"*). The producer has zero knowledge of who, if anyone, is listening.
+- **The Consumer:** Subscribes to events it cares about and reacts independently (e.g., updating a dashboard, writing an audit log, or sending an SMS notification).
 
 ```mermaid
 flowchart LR
-    Producer["Producer: Telemetry Engine<br/>Ship jumped to Sol!"] --> EventBus["Event Bus / Channel"]
-    EventBus --> C1["Navigation HUD (Updates Map)"]
-    EventBus --> C2["Fuel Tracker (Calculates Usage)"]
-    EventBus --> C3["Discord Bot (Sends Notification)"]
+    Producer["Producer: Smart Sensor<br/>Temperature changed to 22.5C"] --> EventBus["Event Bus / Message Channel"]
+    EventBus --> C1["HVAC Controller (Adjusts AC)"]
+    EventBus --> C2["Analytics Engine (Logs metric)"]
+    EventBus --> C3["Mobile Push Gateway (Sends alert)"]
 ```
 
 ### Best Practices for EDA
-1. **Events Represent the Past (Immutable Facts):** Name events using past tense or clear state transitions (`FSDJump`, `Docked`, `CargoEjected`). Never mutate an event packet after it has been announced.
-2. **One-Way Unidirectional Data Flow:** Data travels in a clear line: *Input Event $\to$ State Update $\to$ Consumer Notification*. Never create circular loops where listening to an event fires the exact same event.
-3. **Decouple Producers from Consumers:** The producer must never depend on the consumer's return value or crash if a consumer fails.
+1. **Events Represent the Past (Immutable Facts):** Name events using past tense verbs (`TemperatureSampled`, `OrderPlaced`, `AccountDebited`). Once created, event payloads must be strictly frozen and immutable.
+2. **One-Way Unidirectional Data Flow:** Information moves strictly forward: $\text{Raw Event} \to \text{State Reduction} \to \text{Consumer Notification}$. Never build cyclical paths where reacting to an event triggers the exact same event.
+3. **Decouple Producers from Consumers:** The producer must never depend on the consumer's return value, and a consumer failure must never crash the producer.
 
 ---
 
 ## 2. Reactive Stream Processing
 
 ### What Is It?
-Instead of checking a file or database repeatedly (known as *polling*, which wastes CPU cycles), **reactive stream processing** sets up a continuous pipeline that sits dormant until new data flows into it.
+Instead of querying a database or file periodically (known as **polling**, which wastes CPU cycles and adds artificial latency), **reactive stream processing** sets up an asynchronous pipeline that sleeps until data physically arrives.
 
-When a byte or message arrives on a network socket, the pipeline "reacts" instantly, pushes the data through transformations, and delivers it to listeners.
+When a byte or frame appears on an active network socket or message broker, the pipeline awakens instantly, pushes the payload through parsing and transformation stages, and delivers it to downstream sinks.
 
 ```mermaid
 flowchart LR
-    Source["Continuous Socket Stream<br/>WebSocket / SSE"] -->|Byte arrived| Decode["Decode JSON"]
-    Decode -->|Valid object| Transform["Hydrate to ed-models"]
-    Transform -->|Ready| Sink["State Store and Listeners"]
+    Source["Continuous Network Socket<br/>TCP / WebSocket Stream"] -->|Bytes arrive| Decode["Decode Wire Bytes"]
+    Decode -->|Valid JSON/Proto| Validate["Validate Schema Contract"]
+    Validate -->|Typed object| Sink["State Store and Event Observers"]
 ```
 
 ### Everyday Analogy
-Think of a conveyor belt at a factory. Workers (functions) do not walk back and forth to the warehouse asking if items exist. Instead, items arrive on the belt continuously. As soon as a box reaches a station, the worker performs their task immediately and the box rolls to the next station.
+Think of an industrial conveyor belt. Sorting workers do not repeatedly walk to the warehouse asking if new inventory has arrived. Items travel continuously down the belt; as soon as a box passes a station, the worker applies their transform immediately, and the box glides to the next stage.
 
 ---
 
 ## 3. State Reduction
 
 ### What Is It?
-An event tells you **what happened right now**, but it does not tell you **the whole story of where you are**.
+An event describes **what just happened**, but it does not represent **the complete current state of the world**.
+* An event says: *"Deposit of $50 occurred."*
+* It does not tell you: *"What is my current bank account balance?"*
 
-A **State Reducer** is a clean, simple mathematical function that takes:
-1. Your **Current State** (where you are right now).
-2. The **Incoming Event** (the change that just happened).
-
-It folds them together and returns a **Brand-New Current State**.
+A **State Reducer** is a pure mathematical function that computes the next state by combining:
+1. The **Current State** (where the system was immediately before).
+2. The **Incoming Event** (the change that just arrived).
 
 $$\text{Reducer}(\text{Current State}, \text{Event}) \to \text{New State}$$
 
 ```mermaid
 flowchart TD
-    Current["Current State<br/>system: Sol<br/>docked: False"] --> Reducer["reduce_location()"]
-    Event["Incoming Event<br/>Docked at Abraham Lincoln"] --> Reducer
-    Reducer --> NewState["New State<br/>system: Sol<br/>docked: True<br/>station: Abraham Lincoln"]
+    Current["Current State<br/>account_id: 101<br/>balance: 200.0<br/>status: ACTIVE"] --> Reducer["reduce_account()"]
+    Event["Incoming Event<br/>MoneyDeposited(amount=50.0)"] --> Reducer
+    Reducer --> NewState["New State<br/>account_id: 101<br/>balance: 250.0<br/>status: ACTIVE"]
 ```
 
 ### Direct Code Example
 
 ```python
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
-# Pure Reducer Function: No side effects, no database calls, no network
-def reduce_ship_fuel(current_fuel: float, event: dict) -> float:
-    if event["event"] == "FuelScoop":
-        # Return new state: current fuel + scooped amount
-        return min(32.0, current_fuel + event["ScoopedAmount"])
+@dataclass(frozen=True)
+class AccountState:
+    account_id: str
+    balance: float
+    is_frozen: bool
 
-    if event["event"] == "FSDJump":
-        # Return new state: current fuel - jumped amount
-        return max(0.0, current_fuel - event["FuelUsed"])
+# Pure Reducer Function: No I/O, no network calls, no side effects
+def reduce_account(current: AccountState, event: dict) -> AccountState:
+    event_type = event.get("type")
 
-    # If event doesn't affect fuel, return current state unchanged
-    return current_fuel
+    if event_type == "MoneyDeposited":
+        return replace(current, balance=current.balance + event["amount"])
+
+    if event_type == "MoneyWithdrawn":
+        return replace(current, balance=max(0.0, current.balance - event["amount"]))
+
+    if event_type == "AccountFrozen":
+        return replace(current, is_frozen=True)
+
+    # If the event does not alter this projection, return current state unchanged
+    return current
 ```
 
 ---
 
-## 4. Asynchronous (Async)
+## 4. Asynchronous (Async) Non-Blocking I/O
 
 ### What Is It?
-In standard **synchronous** code, your program does one thing at a time. If it downloads data from the internet or reads a large file from disk, execution stops and freezes until the operation finishes:
+In standard **synchronous** programming, operations execute sequentially. If your application reads from a slow network socket or queries a remote database, thread execution completely halts:
 
 ```python
-# Synchronous (Blocks the entire thread)
-data = read_from_server()  # The entire program is frozen waiting 500ms
-print(data)
+# Synchronous (Blocks the thread)
+data = socket.recv(4096)  # The CPU freezes waiting 200ms for data over the wire
+render_dashboard(data)
 ```
 
-In **asynchronous** code, while waiting for a slow input/output operation (like a network packet arriving from `ed-telemetry`), the computer pauses that specific task and runs other work (such as rendering UI or processing cockpit coordinates):
+In **asynchronous** programming, while waiting for external I/O (such as incoming sensor packets), the runtime yields control back to an event loop. The thread stays busy servicing other operations (like handling user input or repainting a UI):
 
 ```python
-# Asynchronous (Does NOT block the thread)
-async def fetch_telemetry():
-    # Yield control back to the event loop while waiting for the network
+# Asynchronous (Non-blocking)
+async def read_telemetry(stream):
+    # Suspends execution and yields control until bytes physically arrive
     packet = await stream.read_packet()
     return packet
 ```
@@ -122,21 +131,20 @@ async def fetch_telemetry():
 ## 5. Event Dispatch
 
 ### What Is It?
-**Event Dispatch** is the post office of your application. When an event is ready, the dispatcher looks up all registered listeners and hands each one a copy of the event.
+**Event Dispatch** is the internal routing exchange of an application. When a valid event is parsed, the dispatcher matches the event type against its registry of subscribed listeners and passes the event payload to each one.
 
 ```python
-class SimpleDispatcher:
+class EventDispatcher:
     def __init__(self):
-        self._listeners = {}
+        self._registry = {}
 
-    def register(self, event_type, callback):
-        self._listeners.setdefault(event_type, []).append(callback)
+    def subscribe(self, event_type, callback):
+        self._registry.setdefault(event_type, []).append(callback)
 
     def dispatch(self, event):
-        # Look up callbacks interested in this event type
-        callbacks = self._listeners.get(type(event), [])
-        for cb in callbacks:
-            cb(event)  # Hand event to listener
+        handlers = self._registry.get(type(event), [])
+        for handler in handlers:
+            handler(event)
 ```
 
 ---
@@ -144,48 +152,48 @@ class SimpleDispatcher:
 ## 6. The State Store Is the Foundation
 
 ### What Is a State Store?
-A **State Store** is the single, authoritative in-memory snapshot of your entire application's reality. In `ed-fleet-client`, this is `TelemetryStateEngine` containing `ClientStateProjection` (`client.location`, `client.ship`, `client.session`).
+A **State Store** is the single, authoritative, in-memory representation of an application's current state.
 
-### Why Is It the Foundation?
-Without a state store, every UI component or script would have to listen to dozens of raw events and calculate everything from scratch:
-- A navigation widget would have to listen to `FSDJump`, `CarrierJump`, `Location`, `ApproachBody`, and `SupercruiseExit`, and remember previous variables across hours of gameplay.
-- If a new widget loads 20 minutes into a flight, it would have **zero data** until the next hyperspace jump happens.
+### Why Is It Essential?
+Without a state store, every UI component, service, or script would be forced to listen to raw event streams from the moment the system launched:
+* A dashboard widget loaded 2 hours into operation would possess **zero knowledge** of current system status until the next periodic event happens to arrive.
+* Components would duplicate complex reconstruction logic across the entire codebase.
 
-With a State Store:
-- The state store continuously aggregates all events in the background.
-- Any part of the application can query `client.location.star_system` at any millisecond and immediately receive the current, accurate truth.
+With a centralized State Store:
+* Pure reducers continuously fold incoming events into an immutable state tree in memory.
+* Any consumer can inspect `store.current` at any nanosecond and instantly retrieve verified, ambient truth.
 
 ---
 
 ## 7. Observer Decoupling
 
-### What Is It and Why Does It Matter?
-**Observer Decoupling** means the component broadcasting data and the components receiving data have **zero direct knowledge of each other**.
+### Why Does It Matter?
+**Observer Decoupling** guarantees that the component producing data and the components consuming data have **zero direct dependencies on each other**.
 
 ```mermaid
 flowchart LR
     subgraph Coupled ["Tightly Coupled (Fragile)"]
-        ClientA["Client"] -->|Hardcoded Call| UI["UI Window"]
-        ClientA -->|Hardcoded Call| Audio["Sound Player"]
-        ClientA -->|Hardcoded Call| Logger["File Logger"]
+        SourceA["Data Producer"] -->|Hardcoded Direct Call| UI["UI Window"]
+        SourceA -->|Hardcoded Direct Call| Audio["Sound Player"]
+        SourceA -->|Hardcoded Direct Call| Logger["Audit Logger"]
     end
 ```
 
-If the Sound Player crashes or changes its function parameters, `Client` breaks.
+In a coupled model, if `Sound Player` throws an unhandled exception or alters its function signature, `Data Producer` crashes.
 
 ```mermaid
 flowchart LR
     subgraph Decoupled ["Observer Decoupled (Resilient)"]
-        ClientB["Client"] -->|broadcast Event| Dispatcher["Event Dispatcher"]
+        SourceB["Data Producer"] -->|dispatch Event| Dispatcher["Event Dispatcher"]
         Dispatcher -.->|Notifies| UI2["UI Window"]
         Dispatcher -.->|Notifies| Audio2["Sound Player"]
-        Dispatcher -.->|Notifies| Logger2["File Logger"]
+        Dispatcher -.->|Notifies| Logger2["Audit Logger"]
     end
 ```
 
 In the decoupled model:
-- `Client` only knows how to talk to `Dispatcher`.
-- Listeners can be added, removed, paused, or replaced at runtime without changing a single line of client engine code.
+- The data producer interacts strictly with the dispatcher.
+- Listeners can be attached, removed, paused, or tested in total isolation without touching producer code.
 
 ---
 
@@ -195,181 +203,168 @@ In the decoupled model:
 > **An application's state engine must project state at or before event dispatch.**
 
 ### Why This Law Exists: The Stale State Trap
-Imagine you jump to the star system `Sol`. An event arrives from the game: `FSDJump(StarSystem="Sol")`.
+Consider an autonomous vehicle telemetry system. The vehicle transitions gear from `NEUTRAL` to `DRIVE`. An event arrives: `GearShifted(gear="DRIVE")`.
 
-Now imagine an architecture that violates this law by firing external event listeners **before** updating its state store:
+Consider an engine that violates this law by triggering observer callbacks **before** updating its state store:
 
 ```mermaid
 sequenceDiagram
-    participant Wire as Telemetry Wire
+    participant Wire as Network Wire
     participant Bus as Event Dispatcher
-    participant User as User Code (@client.on)
-    participant State as State Store (client.location)
+    participant User as Consumer Callback (@bus.on)
+    participant State as State Store (store.vehicle)
 
-    Wire->>Bus: Inbound FSDJump(StarSystem=Sol)
+    Wire->>Bus: Inbound GearShifted(gear=DRIVE)
     Note over Bus: Violates Ordering Law: Dispatches First!
-    Bus->>User: Runs callback on_jump(event)
-    User->>State: Queries client.location.star_system
-    State-->>User: Returns Achenar (STALE DATA: Has not updated yet!)
-    Bus->>State: Updates state store to Sol (Too late!)
+    Bus->>User: Invokes callback on_gear_shifted(event)
+    User->>State: Queries store.vehicle.current_gear
+    State-->>User: Returns NEUTRAL (STALE DATA: Has not updated yet!)
+    Bus->>State: Updates state store to DRIVE (Too late!)
 ```
 
-Because the event was dispatched before the reducer updated the state store, the user's code asked `client.location.star_system` and received the **previous system (`Achenar`)**, causing logic errors, false alarms, or UI desynchronization.
+Because the event was dispatched before the reducer updated the state store, user code querying `store.vehicle.current_gear` received the **old gear (`NEUTRAL`)**, causing false alarms, illegal command validation, or desynchronized UI dashboards.
 
 ### The Correct Implementation
-`ed-fleet-client` strictly enforces the Ordering Law:
+The ingestion engine must enforce sequential order internally:
 
 ```python
-def _handle_raw_event(self, raw: dict[str, Any]) -> None:
-    # 1. REDUCE FIRST: Update state store synchronously
-    _state, event = self._stream_use_case.process_raw_event(raw)
+def handle_incoming_frame(raw_frame: dict) -> None:
+    # 1. REDUCE FIRST: Compute and apply new state synchronously
+    event = parse_event(raw_frame)
+    state_store.apply(event)
 
-    # 2. DISPATCH SECOND: Now listeners see the fresh, updated state
-    if event is not None:
-        self._dispatch_use_case.dispatch(event)
+    # 2. DISPATCH SECOND: Observers now see the updated truth in the store
+    event_dispatcher.dispatch(event)
 ```
-
-Now, when any listener runs `@client.on(FSDJump)`, querying `client.location.star_system` is guaranteed to return `Sol`.
 
 ---
 
 ## 9. Reentrancy, Race Conditions, and Non-Deterministic Invocation
 
 ### A. What Is a Race Condition?
-A **Race Condition** occurs when the correctness of a program depends on the relative timing or execution order of uncontrolled events:
-- Process A reads bank balance: `$100`.
-- Process B reads bank balance: `$100`.
-- Process A deposits `$50` $\to$ sets balance to `$150`.
-- Process B withdraws `$20` $\to$ overwrites balance to `$80` (clobbering A's deposit!).
+A **Race Condition** occurs when program correctness depends on uncontrolled timing or execution order:
+1. Thread A reads account balance: `$100`.
+2. Thread B reads account balance: `$100`.
+3. Thread A deposits `$50` $\to$ sets balance to `$150`.
+4. Thread B withdraws `$20` $\to$ overwrites balance to `$80` (clobbering A's deposit!).
 
-The final result changes depending on which process finished first.
+The final value varies depending on thread scheduling.
 
 ### B. What Is Non-Deterministic Invocation Order?
-When multiple callbacks register to an event bus:
+When multiple observers register for the same event type:
 ```python
-@client.on(FSDJump)
-def listener_one(event): ...
+@dispatcher.on(TemperatureAlert)
+def write_audit_log(event): ...
 
-@client.on(FSDJump)
-def listener_two(event): ...
+@dispatcher.on(TemperatureAlert)
+def trigger_cooling_fan(event): ...
 ```
-The event bus provides **non-deterministic ordering**: you must never write code assuming `listener_one` will always finish before `listener_two` starts. If `listener_two` depends on something `listener_one` did, a race condition will occur.
+Unless explicitly documented by the framework, **never assume which listener executes first**. Observers must remain entirely independent of one another.
 
 ### C. What Is Reentrancy?
-**Reentrancy** occurs when a function execution is interrupted midway by a second call to the exact same function before the first execution has completed.
+**Reentrancy** occurs when a function execution is interrupted midway by a second invocation of that exact same function before the first call finishes.
+1. `reduce_state()` begins writing updated fields to a mutable global dictionary.
+2. An observer callback triggered mid-function invokes `reduce_state()` again.
+3. The internal state dictionary becomes partially updated or corrupt.
 
-For example:
-1. `reduce_state()` begins updating the ship hull.
-2. In the middle of execution, a callback triggers another telemetry update.
-3. `reduce_state()` is invoked a second time on the same thread before the first one finished.
-4. If variables were half-written, state becomes corrupted.
-
-Pure functional reducers (`current -> replace(current)`) prevent reentrancy bugs because they never mutate global shared memory directly.
+**Remediation:** Pure functional reducers returning brand-new immutable objects (`replace(current, ...)`) are inherently reentrant and immune to mid-cycle state corruption.
 
 ---
 
 ## 10. Thread Safety & Invariant Gates
 
 ### A. Thread Safety: Protecting Shared Memory
-In a modern client, network packets arrive on background I/O threads, while your application or UI reads state on the main thread.
+In reactive applications, network packets arrive on background I/O threads, while rendering engines or user scripts read state on the main thread.
 
-If Thread 1 is writing coordinates `(10.0, 20.0, 30.0)` into memory at the exact same microsecond Thread 2 is reading them, Thread 2 could read half-written memory (e.g. `(10.0, 0.0, 0.0)`).
-
-**Thread Safety** means protecting shared state with locks (`threading.RLock`) so only one thread can read or write at a time:
+If Thread 1 updates coordinates `(x, y, z)` at the exact microsecond Thread 2 reads them, Thread 2 risks reading tearing or half-written values. Shared mutable state must be synchronized using locks or rendered atomic via immutable reference swapping:
 
 ```python
-class ThreadSafeState:
+import threading
+
+class ThreadSafeStateStore:
     def __init__(self):
         self._lock = threading.RLock()
-        self._state = LocationProjection()
+        self._state = InitialState()
 
     def get_state(self):
-        with self._lock:  # Locks out writers while reading
+        with self._lock:
             return self._state
 
     def update_state(self, new_state):
-        with self._lock:  # Locks out readers while writing
+        with self._lock:
             self._state = new_state
 ```
 
 ### B. Invariant Gates: The Bouncers of the State Machine
-An **Invariant** is a fundamental business rule that must **always be true**, no matter what input arrives.
+An **Invariant** is a foundational domain rule that must **always be true**, regardless of input data.
 
-Real-world telemetry feeds can be noisy, corrupted, or report out-of-order data during game crashes. An **Invariant Gate** acts as a validation checkpoint that drops or corrects impossible physical claims before they contaminate state.
+Real-world telemetry feeds can be noisy, duplicate packets, or report physically impossible states due to network corruption. An **Invariant Gate** acts as an entry filter that rejects or normalizes invalid claims before they contaminate state.
 
-In `ed-fleet-client`, [`validate_mutex_invariants()`](file:///home/michael/src/github.com/mnaatjes/ed-fleet-client/src/ed_fleet_client/core/domain/state/engine.py#L23-L56) enforces physical flight regimes:
-1. **Regime Mutual Exclusion:** A ship cannot be simultaneously `DOCKED` and in `SUPERCRUISE`.
-2. **Hardware Mutual Exclusion:** A ship cannot be in `SUPERCRUISE` with `LANDING_GEAR_DOWN` or `CARGO_SCOOP_DEPLOYED`.
+* Example in HVAC Telemetry: A system cannot report `HEATING_ACTIVE` and `COOLING_ACTIVE` simultaneously.
+* Example in Banking: An account cannot have `status="CLOSED"` while maintaining an active uncollected loan.
 
 ```mermaid
 flowchart TD
-    RawPacket["Raw Status Frame<br/>Claims DOCKED and SUPERCRUISE"] --> Gate["validate_mutex_invariants()"]
-    Gate -->|Fails physical logic| Reject["Drop Frame and Log Warning<br/>Corrupt Frame Count + 1"]
+    RawPacket["Raw Telemetry Frame<br/>Claims HEATING and COOLING active"] --> Gate["validate_system_invariants()"]
+    Gate -->|Fails physical logic| Reject["Drop Frame and Log Diagnostic<br/>Corrupt Packet Discarded"]
     Gate -->|Passes physical logic| Reducer["Pass to State Reducer"]
 ```
-
-By placing invariant gates at the boundary before reduction, `client.location` and `client.ship` remain 100% reliable, physically consistent, and clean of telemetry glitches.
 
 ---
 
 ## 11. State Consumption Patterns: Push vs. Pull (The Game Loop)
 
-Once state is safely folded into memory by reducers, how do consumer applications read it? There are two primary paradigms:
+Once state is folded into memory, how do consumer applications read it? There are two primary paradigms:
 
 ```mermaid
 flowchart TD
     subgraph Pull ["Pull Paradigm: In-Memory State Sampling (Game Loop)"]
-        Loop["while True: Every 500ms or 16ms"] --> Read["Read client.location.star_system<br/>Instant synchronous read from RAM"]
-        Read --> Render["Render HUD / Console Dashboard"]
+        Loop["while True: (60 FPS or 10 Hz)"] --> Read["Read store.vehicle.speed<br/>Instant synchronous read from RAM"]
+        Read --> Render["Render Canvas / UI Gauge"]
     end
 
     subgraph Push ["Push Paradigm: Event-Driven Subscription"]
-        Event["Inbound FSDJump arrives"] --> Dispatcher["Dispatcher alerts @client.on"]
-        Dispatcher --> Callback["Execute on_jump(event) callback"]
+        Event["Inbound OverspeedAlert arrives"] --> Dispatcher["Dispatcher alerts @bus.on"]
+        Dispatcher --> Callback["Execute trigger_brake_alarm(event)"]
     end
 ```
 
 ### Pattern Names and Terminology
 
-Depending on your engineering discipline, continuously reading state in a loop goes by several formal names:
-
 1. **The Game Loop / Render Tick Pattern (Gaming & Simulation):**
-   In cockpit simulators and games, user interfaces redraw on a fixed frame budget (e.g., 60 FPS = every 16.6ms, or 2 Hz = every 500ms). Rather than waiting for events, the loop ticks forward, samples `client.location` and `client.ship` directly from memory, and paints the screen:
+   Fixed frame budget loops (e.g., 60 FPS = every 16.6ms). Rather than waiting on events, the loop ticks forward, samples in-memory state variables, and updates the display:
    ```python
    while running:
-       draw_hud(
-           system=client.location.star_system,
-           fuel=client.ship.telemetry.fuel_main if client.ship.telemetry else 0.0,
-       )
-       await asyncio.sleep(0.016)  # 60 FPS tick
+       draw_gauge(speed=store.telemetry.speed, battery=store.telemetry.battery)
+       await asyncio.sleep(0.016)
    ```
 
 2. **In-Memory State Sampling / Polling Loop (Control Planes & Systems):**
-   Repeatedly inspecting an in-memory variable on a timer is called **State Polling** or **Sampling**.
-   - **Crucial Distinction:** Unlike *network polling* (which spam-requests an HTTP server over Wi-Fi and wastes bandwidth), **in-memory sampling** reads local RAM that has already been hydrated in the background. It executes in nanoseconds with virtually zero CPU overhead.
+   Repeatedly reading an in-memory variable on a timer is called **State Sampling**.
+   - *Crucial Distinction:* Unlike *network polling* (which spams remote servers over HTTP and wastes bandwidth), *in-memory sampling* reads local RAM that has already been hydrated in the background. It executes in nanoseconds with zero network overhead.
 
 3. **Immediate-Mode State Consumption (UI Architecture):**
-   In modern immediate-mode UI frameworks (like Dear ImGui, Unity, and Flutter), widgets do not retain their own copies of text or state. Instead, they re-query the authoritative state store on every render pass.
+   In immediate-mode frameworks (Dear ImGui, Flutter, Unity), widgets do not retain local state copies. They query the state store directly on each frame pass.
 
 4. **CQRS Projection Sampling (Software Architecture):**
    Under Command Query Responsibility Segregation (CQRS):
-   - The background telemetry stream and reducers represent the **Write Model** (ingesting events and folding them into memory).
-   - `client.location`, `client.ship`, and `client.session` represent the **Read Model** (materialized state projections).
-   - The consumer's while loop represents the **Query Execution** sampling the read model.
+   - The streaming pipeline represents the **Write Model** (ingesting events and folding them into state).
+   - `store.current` represents the **Read Model** (materialized projections).
+   - Consumer sampling represents the **Query Execution**.
 
 ### Choosing Between Loops and Event Listeners
 
 | Application Need | Recommended Pattern | Code Recipe |
 | :--- | :--- | :--- |
-| **HUDs, GUIs, Overlays, Web Dashboards** | **Game Loop / State Sampling** | `while True: print(client.location.star_system); await asyncio.sleep(0.5)` |
-| **Alerts, Sound Effects, Discord Bots** | **Event Listener (`@client.on`)** | `@client.on(FSDJump)` $\to$ `play_sound("jump.wav")` |
-| **Sequential Procedural Scripts** | **One-Shot Awaiter (`wait_for`)** | `await client.wait_for(FSDJump)` |
+| **Gauges, Dashboards, Cockpit HUDs** | **Game Loop / State Sampling** | `while True: print(store.telemetry.speed); await asyncio.sleep(0.1)` |
+| **Audible Sirens, Discord Bots, SMS Alerts** | **Event Listener (`@bus.on`)** | `@bus.on(OverspeedAlert)` $\to$ `play_alarm()` |
+| **Sequential Scripts / Workflows** | **One-Shot Awaiter (`wait_for`)** | `await bus.wait_for(EngineStarted)` |
 
 ---
 
 ## 12. Asynchronous Design Patterns: Taxonomies, Divergence, and Push vs. Pull
 
-Asynchronous systems are not one-size-fits-all. Different operational requirements demand distinct async patterns depending on **who controls execution timing** and **whether a return value is expected**.
+Different operational requirements demand distinct asynchronous patterns depending on **who controls timing** and **whether a return value is expected**.
 
 ### The 4 Canonical Asynchronous Patterns
 
@@ -397,39 +392,20 @@ flowchart TD
 ```
 
 #### 1. Request-Response / Future-Promise Pattern
-- **Definition:** The caller initiates a task, suspends its own execution, and awaits fulfillment of a Promise/Future containing a return value.
-- **When to Use:** When the caller strictly needs the result of a remote or deferred calculation before proceeding.
-- **Example in `ed-fleet-client`:**
-  ```python
-  snapshot = await client.get_snapshot("status", "/api/v1/status")
-  ```
+- **Definition:** The caller schedules an operation, suspends its own execution, and awaits fulfillment of a Promise/Future containing a return value.
+- **When to Use:** When the caller strictly requires data before proceeding (e.g., fetching a configuration snapshot on startup).
 
 #### 2. Fire-and-Forget Pattern (`loop.create_task`)
-- **Definition:** The caller schedules an asynchronous coroutine on the event loop and immediately returns without awaiting completion.
-- **When to Use:** When the operation is purely for side effects (logging, analytics, sounds) and must **never** block or slow down the originating caller or ingestion pipeline.
-- **Example in `ed-fleet-client`:**
-  ```python
-  # TelemetryEventDispatcher alerting a user listener without delaying the stream:
-  loop.create_task(user_listener(event))
-  ```
+- **Definition:** The caller schedules a task on the event loop and immediately returns without awaiting completion.
+- **When to Use:** Pure side-effects (e.g., telemetry audit logging, analytics fanout) where a slow subscriber must **never** block or slow down the originating ingestion stream.
 
 #### 3. Reactive Async Stream / Generator Pattern (`async for`)
 - **Definition:** An unbounded sequence of asynchronous data elements delivered over time through an `AsyncIterator`.
-- **When to Use:** Ingesting real-time network sockets, WebSockets, or Server-Sent Events (SSE) where packets arrive continuously over hours or days.
-- **Example in `ed-fleet-client`:**
-  ```python
-  async for raw_json_packet in websocket_transport:
-      process_telemetry(raw_json_packet)
-  ```
+- **When to Use:** Ingesting real-time network sockets, WebSockets, or SSE streams where items arrive continuously over hours or days.
 
 #### 4. Publish / Subscribe (Pub/Sub) Fanout Pattern
-- **Definition:** A single event is broadcast across a registry of decoupled observers, where each observer receives a copy independently.
-- **When to Use:** When multiple independent subsystems need to react to the exact same game event without knowing about each other.
-- **Example in `ed-fleet-client`:**
-  ```python
-  @client.on(FSDJump)
-  def on_jump(event: FSDJump): ...
-  ```
+- **Definition:** An event is broadcast across a registry of decoupled observers, where each observer receives a copy independently.
+- **When to Use:** When multiple independent subsystems need to react to the exact same occurrence without knowing about each other.
 
 ---
 
@@ -441,12 +417,12 @@ The single most important architectural axis in asynchronous communication is **
 flowchart LR
     subgraph Push ["Asynchronous PUSH (Producer-Driven)"]
         direction LR
-        Prod["Telemetry Producer<br/>Game Socket"] -->|Pushes immediately on arrival| PushConsumer["Consumer Callback<br/>@client.on"]
+        Prod["Data Producer<br/>Hardware Sensor"] -->|Pushes immediately on arrival| PushConsumer["Consumer Callback<br/>@bus.on(Alert)"]
     end
 
     subgraph Pull ["Asynchronous PULL (Consumer-Driven)"]
         direction LR
-        PullConsumer["Consumer Code<br/>Game Loop"] -->|Requests next value when ready| StateStore["In-Memory State Store<br/>client.location"]
+        PullConsumer["Consumer Code<br/>Display Render Loop"] -->|Requests next value when ready| StateStore["In-Memory State Store<br/>store.current"]
     end
 ```
 
