@@ -239,7 +239,7 @@ def handle_incoming_frame(raw_frame: dict) -> None:
 
 ---
 
-## 9. Reentrancy, Race Conditions, and Non-Deterministic Invocation
+## 9. Reentrancy, Race Conditions, Non-Deterministic Invocation, and Thread Scheduling
 
 ### A. What Is a Race Condition?
 A **Race Condition** occurs when program correctness depends on uncontrolled timing or execution order:
@@ -262,12 +262,64 @@ def trigger_cooling_fan(event): ...
 Unless explicitly documented by the framework, **never assume which listener executes first**. Observers must remain entirely independent of one another.
 
 ### C. What Is Reentrancy?
-**Reentrancy** occurs when a function execution is interrupted midway by a second invocation of that exact same function before the first call finishes.
+**Reentrancy** occurs when a function execution is interrupted midway by a second invocation of that exact same function before the first call finishes:
 1. `reduce_state()` begins writing updated fields to a mutable global dictionary.
 2. An observer callback triggered mid-function invokes `reduce_state()` again.
 3. The internal state dictionary becomes partially updated or corrupt.
 
 **Remediation:** Pure functional reducers returning brand-new immutable objects (`replace(current, ...)`) are inherently reentrant and immune to mid-cycle state corruption.
+
+### D. Thread Scheduling Best Practices in Event-Driven Systems
+In modern operating systems, the kernel scheduler allocates CPU time slices across multiple threads preemptively. You cannot predict or control which thread runs on which millisecond.
+
+To guarantee state stability without blocking high-throughput streaming, apply these 5 architectural thread scheduling best practices:
+
+```mermaid
+flowchart TD
+    subgraph Scheduling ["Thread Scheduling Architecture"]
+        IOThread["Background I/O Thread (Dedicated Network Loop)"] -->|Passes Raw Frame| Worker["Worker Thread Pool (CPU Parsing / Validation)"]
+        Worker -->|Reduces State Synchronously| Store["Thread-Safe In-Memory State Store (Atomic Swap)"]
+        Store -->|Post Event Signal| EventLoop["Main / UI Thread Event Loop (asyncio / Render Tick)"]
+        EventLoop --> UI["UI Render Frame (60 FPS)"]
+        EventLoop --> Observers["Non-blocking User Callbacks"]
+    end
+```
+
+#### 1. Isolate the I/O Ingestion Loop on a Dedicated Thread
+Never run intensive JSON parsing, schema validation, or user callbacks directly inside the thread that reads from the network socket:
+* **The Failure Mode:** If a user callback blocks for 150ms on a disk write while running on the socket reader thread, the TCP/WebSocket receive buffer overflows, triggering OS packet drops and stream disconnects.
+* **Best Practice:** Keep the socket thread thin. It should read raw bytes, frame the packets, push them into an in-memory queue (`asyncio.Queue` or `queue.Queue`), and immediately return to listen for the next byte.
+
+#### 2. Thread Affiliation: Confine State Mutation to a Single Worker
+Concurrent multi-threaded mutations require complex lock contention management (`Mutex`, `RLock`), which degrades throughput and introduces deadlock risks.
+* **Best Practice:** Use the **Single-Writer Principle** (the Actor model / LMAX Disruptor pattern). Route all incoming events into a single worker thread or sequential event loop tasked with executing reducers.
+* Multiple consumer threads can concurrently sample the resulting state projections in RAM, but strictly **one thread writes to state**.
+
+#### 3. Atomic Reference Swapping Instead of Deep Locking
+In high-frequency systems (e.g. 60 FPS UI loops), acquiring a mutex lock on every variable read stalls the rendering pipeline.
+* **Best Practice:** Treat state snapshots as immutable dataclasses. When a reducer generates a new state, swap the pointer reference atomically:
+  ```python
+  # Atomic pointer swap in Python (GIL guarantees atomic reference assignment)
+  self._current_state = new_immutable_state
+  ```
+  Readers simply grab a local reference (`snapshot = self._current_state`). Even if a new state arrives a nanosecond later, the reader's local snapshot reference remains 100% stable and tear-free without holding locks.
+
+#### 4. Decouple User Callbacks via Thread Pools (`run_in_executor`)
+When observers must perform blocking tasks (e.g., writing to SQLite, logging to disk, querying an external REST API):
+* **Best Practice:** Never execute blocking sync code directly on the reactive event loop:
+  ```python
+  # Offload blocking work to a background worker thread
+  await loop.run_in_executor(None, blocking_database_write, event)
+  ```
+  This preserves the responsiveness of the event loop for stream ingestion.
+
+#### 5. Cross-Thread Scheduling: Marshalling Back to the UI Thread
+In desktop GUI frameworks (Dear ImGui, PyQt, Tkinter, Flutter), UI controls can only be manipulated from the **Main Thread**. Modifying a widget from a background worker thread causes segfaults or corrupted rendering.
+* **Best Practice:** When an event arrives on a background telemetry thread, post a message or signal to the main thread's event queue rather than calling UI methods directly:
+  ```python
+  # Marshalling from background thread to asyncio main loop
+  loop.call_soon_threadsafe(callback, event)
+  ```
 
 ---
 
