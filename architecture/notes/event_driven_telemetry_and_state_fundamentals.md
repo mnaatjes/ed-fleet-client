@@ -23,7 +23,7 @@ In an **Event-Driven Architecture (EDA)**, software components communicate by an
 
 ```mermaid
 flowchart LR
-    Producer["Producer (Game / Telemetry)\n'Ship jumped to Sol!'"] --> EventBus["Event Bus / Channel"]
+    Producer["Producer: Telemetry Engine<br/>Ship jumped to Sol!"] --> EventBus["Event Bus / Channel"]
     EventBus --> C1["Navigation HUD (Updates Map)"]
     EventBus --> C2["Fuel Tracker (Calculates Usage)"]
     EventBus --> C3["Discord Bot (Sends Notification)"]
@@ -45,9 +45,9 @@ When a byte or message arrives on a network socket, the pipeline "reacts" instan
 
 ```mermaid
 flowchart LR
-    Source["Continuous Socket Stream\n(WebSocket / SSE)"] -->|"Byte arrived"| Decode["Decode JSON"]
-    Decode -->|"Valid object"| Transform["Hydrate to ed-models"]
-    Transform -->|"Ready"| Sink["State Store & Listeners"]
+    Source["Continuous Socket Stream<br/>WebSocket / SSE"] -->|Byte arrived| Decode["Decode JSON"]
+    Decode -->|Valid object| Transform["Hydrate to ed-models"]
+    Transform -->|Ready| Sink["State Store and Listeners"]
 ```
 
 ### Everyday Analogy
@@ -70,9 +70,9 @@ $$\text{Reducer}(\text{Current State}, \text{Event}) \to \text{New State}$$
 
 ```mermaid
 flowchart TD
-    Current["Current State\n{\n  system: 'Sol',\n  docked: False\n}"] --> Reducer["reduce_location()"]
-    Event["Incoming Event\nDocked(station='Abraham Lincoln')"] --> Reducer
-    Reducer --> NewState["New State\n{\n  system: 'Sol',\n  docked: True,\n  station: 'Abraham Lincoln'\n}"]
+    Current["Current State<br/>system: Sol<br/>docked: False"] --> Reducer["reduce_location()"]
+    Event["Incoming Event<br/>Docked at Abraham Lincoln"] --> Reducer
+    Reducer --> NewState["New State<br/>system: Sol<br/>docked: True<br/>station: Abraham Lincoln"]
 ```
 
 ### Direct Code Example
@@ -165,9 +165,9 @@ With a State Store:
 ```mermaid
 flowchart LR
     subgraph Coupled ["Tightly Coupled (Fragile)"]
-        ClientA["Client"] -->|"Hardcoded Call"| UI["UI Window"]
-        ClientA -->|"Hardcoded Call"| Audio["Sound Player"]
-        ClientA -->|"Hardcoded Call"| Logger["File Logger"]
+        ClientA["Client"] -->|Hardcoded Call| UI["UI Window"]
+        ClientA -->|Hardcoded Call| Audio["Sound Player"]
+        ClientA -->|Hardcoded Call| Logger["File Logger"]
     end
 ```
 
@@ -176,10 +176,10 @@ If the Sound Player crashes or changes its function parameters, `Client` breaks.
 ```mermaid
 flowchart LR
     subgraph Decoupled ["Observer Decoupled (Resilient)"]
-        ClientB["Client"] -->|"broadcast(Event)"| Dispatcher["Event Dispatcher"]
-        Dispatcher -.->|"Notifies"| UI2["UI Window"]
-        Dispatcher -.->|"Notifies"| Audio2["Sound Player"]
-        Dispatcher -.->|"Notifies"| Logger2["File Logger"]
+        ClientB["Client"] -->|broadcast Event| Dispatcher["Event Dispatcher"]
+        Dispatcher -.->|Notifies| UI2["UI Window"]
+        Dispatcher -.->|Notifies| Audio2["Sound Player"]
+        Dispatcher -.->|Notifies| Logger2["File Logger"]
     end
 ```
 
@@ -206,12 +206,12 @@ sequenceDiagram
     participant User as User Code (@client.on)
     participant State as State Store (client.location)
 
-    Wire->>Bus: Inbound FSDJump(StarSystem="Sol")
+    Wire->>Bus: Inbound FSDJump(StarSystem=Sol)
     Note over Bus: Violates Ordering Law: Dispatches First!
     Bus->>User: Runs callback on_jump(event)
-    User->>State: Asks: "client.location.star_system"
-    State-->>User: Returns "Achenar" (STALE DATA! Hasn't updated yet!)
-    Bus->>State: Now updates state store to "Sol" (Too late!)
+    User->>State: Queries client.location.star_system
+    State-->>User: Returns Achenar (STALE DATA: Has not updated yet!)
+    Bus->>State: Updates state store to Sol (Too late!)
 ```
 
 Because the event was dispatched before the reducer updated the state store, the user's code asked `client.location.star_system` and received the **previous system (`Achenar`)**, causing logic errors, false alarms, or UI desynchronization.
@@ -303,9 +303,9 @@ In `ed-fleet-client`, [`validate_mutex_invariants()`](file:///home/michael/src/g
 
 ```mermaid
 flowchart TD
-    RawPacket["Raw Status Frame\n(Claims DOCKED and SUPERCRUISE)"] --> Gate["validate_mutex_invariants()"]
-    Gate -->|"Fails physical logic"| Reject["Drop Frame & Log Warning\n(Corrupt Frame Count + 1)"]
-    Gate -->|"Passes physical logic"| Reducer["Pass to State Reducer"]
+    RawPacket["Raw Status Frame<br/>Claims DOCKED and SUPERCRUISE"] --> Gate["validate_mutex_invariants()"]
+    Gate -->|Fails physical logic| Reject["Drop Frame and Log Warning<br/>Corrupt Frame Count + 1"]
+    Gate -->|Passes physical logic| Reducer["Pass to State Reducer"]
 ```
 
 By placing invariant gates at the boundary before reduction, `client.location` and `client.ship` remain 100% reliable, physically consistent, and clean of telemetry glitches.
@@ -319,7 +319,7 @@ Once state is safely folded into memory by reducers, how do consumer application
 ```mermaid
 flowchart TD
     subgraph Pull ["Pull Paradigm: In-Memory State Sampling (Game Loop)"]
-        Loop["while True: (Every 500ms / 16ms)"] --> Read["Read client.location.star_system\n(Instant synchronous read from RAM)"]
+        Loop["while True: Every 500ms or 16ms"] --> Read["Read client.location.star_system<br/>Instant synchronous read from RAM"]
         Read --> Render["Render HUD / Console Dashboard"]
     end
 
@@ -376,17 +376,17 @@ Asynchronous systems are not one-size-fits-all. Different operational requiremen
 ```mermaid
 flowchart TD
     subgraph P1 ["1. Request-Response (Futures / Promises)"]
-        Req["Client calls 'await fetch()'"] --> Susp["Caller suspends"]
+        Req["Client calls await fetch()"] --> Susp["Caller suspends"]
         Susp --> Ret["Resumes with return value"]
     end
 
     subgraph P2 ["2. Fire-and-Forget (Background Delegation)"]
-        Fire["Client calls 'loop.create_task()'"] --> Bg["Runs in background"]
-        Fire --> Cont["Caller continues immediately;\nResult is discarded!"]
+        Fire["Client calls loop.create_task()"] --> Bg["Runs in background"]
+        Fire --> Cont["Caller continues immediately<br/>Result is discarded"]
     end
 
     subgraph P3 ["3. Reactive Async Stream (Generator Pipeline)"]
-        Gen["async for chunk in stream:"] --> Consume["Consumer pulls next element\nwhen ready (backpressure control)"]
+        Gen["async for chunk in stream:"] --> Consume["Consumer pulls next element<br/>when ready (backpressure control)"]
     end
 
     subgraph P4 ["4. Pub/Sub Event Fanout (Observer)"]
@@ -441,12 +441,12 @@ The single most important architectural axis in asynchronous communication is **
 flowchart LR
     subgraph Push ["Asynchronous PUSH (Producer-Driven)"]
         direction LR
-        Prod["Telemetry Producer\n(Game Socket)"] -->|"Pushes immediately\non arrival!"| PushConsumer["Consumer Callback\n(@client.on)"]
+        Prod["Telemetry Producer<br/>Game Socket"] -->|Pushes immediately on arrival| PushConsumer["Consumer Callback<br/>@client.on"]
     end
 
     subgraph Pull ["Asynchronous PULL (Consumer-Driven)"]
         direction LR
-        PullConsumer["Consumer Code\n(Game Loop)"] -->|"Requests next value\nwhen ready!"| StateStore["In-Memory State Store\n(client.location)"]
+        PullConsumer["Consumer Code<br/>Game Loop"] -->|Requests next value when ready| StateStore["In-Memory State Store<br/>client.location"]
     end
 ```
 
