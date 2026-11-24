@@ -35,4 +35,4 @@ Governed by Markdown Architectural Decision Records (MADR 3.0).
 
 Draft or deferred decision proposals are archived under `architecture/adr/drafts/` until scheduled for implementation:
 * [`drafts/empirical_telemetry_ingestion_and_bayesian_smoothing.md`](drafts/empirical_telemetry_ingestion_and_bayesian_smoothing.md) - Empirical Flight Telemetry Ingestion, Bayesian Smoothing, and Regime-Conditioned Fidelity.
-* [`drafts/decoupling_state_and_event_client_repositories.md`](drafts/decoupling_state_and_event_client_repositories.md) - Decoupling Telemetry State Projections, Event Streaming Bus, and Facade SDK into Specialized Client Repositories.
+* [`drafts/decoupling_state_and_event_client_repositories.md`](drafts/decoupling_state_and_event_client_repositories.md) - Decoupling Telemetry State Projections and Event Streaming Bus into Specialized Client Repositories.

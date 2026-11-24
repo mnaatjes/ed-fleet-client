@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 - Generated Diataxis developer reference guide `docs/reference/canonical_property_map.md` mapping properties to projection paths and authoritative event sources.
 - Added automated test suite `tests/architecture/test_property_event_matrix.py` verifying matrix integrity, determinism, and version compliance.
 - Added draft architecture record `architecture/adr/drafts/empirical_telemetry_ingestion_and_bayesian_smoothing.md` specifying future Bayesian smoothing and regime-conditioned empirical mining.
-- Added draft architecture record `architecture/adr/drafts/decoupling_state_and_event_client_repositories.md` specifying decoupling into `ed-state-client`, `ed-event-client`, and composite `ed-fleet-sdk` facade repositories with full directory topologies, boundary models, and key-concept maps.
+- Added draft architecture record `architecture/adr/drafts/decoupling_state_and_event_client_repositories.md` specifying decoupling into `ed-state-client` and `ed-event-client` repositories with full directory topologies, boundary models, and key-concept maps (deferring composite facade SDK).
 
 > Context Hydration Reference: `9acf5e6f-6a6a-4b31-8053-d855ac8f3d00`
 

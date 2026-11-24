@@ -1,31 +1,30 @@
 ---
-title: "Draft ADR: Decoupling Telemetry State Projections, Event Streaming Bus, and Facade SDK into Specialized Client Repositories"
+title: "Draft ADR: Decoupling Telemetry State Projections and Event Streaming Bus into Specialized Client Repositories"
 status: "draft"
 date: "2026-11-24"
-tags: ["architecture", "adr", "draft", "decoupling", "state-client", "event-client", "facade", "repository-topology", "boundaries"]
+tags: ["architecture", "adr", "draft", "decoupling", "state-client", "event-client", "repository-topology", "boundaries"]
 ---
 
-# Draft ADR: Decoupling Telemetry State Projections, Event Streaming Bus, and Facade SDK into Specialized Client Repositories
+# Draft ADR: Decoupling Telemetry State Projections and Event Streaming Bus into Specialized Client Repositories
 
 ## 1. Context and Problem Statement
 
-The current `ed-fleet-client` repository bundles three fundamentally distinct software engineering paradigms into a single unified library and facade object (`EliteDangerousClient`):
+The current `ed-fleet-client` repository bundles two fundamentally distinct telemetry consumption paradigms into a single unified library and facade object (`EliteDangerousClient`):
 1. **Synchronous State Engine & Reducers:** Passive, deterministic, in-memory materialized projections (`client.location`, `client.ship`, `client.session`) designed for game loops and high-frequency UI sampling.
 2. **Asynchronous Reactive Event Bus:** Active, non-blocking pub/sub observer mechanisms (`@client.on(EventType)`, `client.subscribe()`) designed for notifications, alerts, audio cues, and side-effect delegation.
-3. **Domain Calculation Services & Facade Composition:** Stateless computational domain algorithms (`orbital`, `navigation`, `combat_analytics`, `flight_performance`, `astrophysics`) composed together with snapshot hydrators and stream transports.
 
-While these subsystems all consume upstream *Elite Dangerous* telemetry (originating from `ed-telemetry` REST/SSE or WebSocket streams and typed via `ed-models`), their co-location within a single package introduces architectural and cognitive friction:
+While both subsystems consume upstream *Elite Dangerous* telemetry (originating from `ed-telemetry` REST/SSE or WebSocket streams and typed via `ed-models`), their co-location within a single package introduces architectural and cognitive friction:
 * **Conflation of Consumption Paradigms:** Developers struggle with competing mental models (push vs. pull). Subscribing to `@client.on(FSDJump)` feels redundant when `client.location.star_system` is also available, blurring the line between discrete past events and continuous ambient state.
 * **Competing Operational Lifecycles:** An overlay HUD only needs instantaneous state sampling in RAM with zero overhead and does not need event queueing or listener callback loops. Conversely, a Discord bot or alert siren only needs discrete event triggers and does not require allocating memory for continuous 3D coordinate and orbital tracking projections.
-* **God Facade Anti-Pattern:** `EliteDangerousClient` accumulates responsibility for connection management, state mutation, invariant gating, event subscription, and domain service dispatching, violating the Single Responsibility Principle at the public API boundary.
+* **Premature UX Facade Complexity:** Attempting to unify these two paradigms into an all-in-one developer facade (`EliteDangerousClient`) prematurely entangles transport lifecycle management, state mutation, invariant gating, and event dispatching before the underlying core primitives are independently stable and rigorously tested.
 
-We require an architectural blueprint for cleanly decomposing this ecosystem into specialized, independently consumable repositories with unambiguous directory topologies, domain scopes, and conceptual invariants.
+We require an architectural blueprint for decomposing this ecosystem into two focused, independent, and specialized client repositories: `ed-state-client` and `ed-event-client`. Constructing a higher-level composite SDK or developer facade is intentionally deferred until both specialized clients are fully implemented, benchmarked, and verified.
 
 ---
 
-## 2. Proposed Multi-Repository Topology
+## 2. Proposed Dual-Repository Topology
 
-The current monolithic client architecture will be decomposed into two focused domain packages and one high-level developer convenience facade package:
+The current monolithic client architecture will be split strictly into two focused domain packages:
 
 ```mermaid
 flowchart TD
@@ -35,22 +34,16 @@ flowchart TD
     Wire["ed-telemetry (Transport / SSE / Sockets)"] --> SC
     Wire --> EC
 
-    SC --> SDK["ed-fleet-sdk (Unified High-Level Developer Facade)"]
-    EC --> SDK
-    Services["ed-services (Domain Algorithms / Optional)"] --> SDK
-
-    SDK --> AppHUD["Game HUDs / Cockpit Loops"]
-    SDK --> AppBots["Discord / Alert Observers"]
-    SDK --> AppTools["Companion Nav / Exploration Tools"]
+    SC --> AppHUD["Game HUDs / Cockpit Loops / Overlays"]
+    EC --> AppBots["Discord Bots / Warning Sirens / Event Loggers"]
 ```
 
 ### Repository Matrix
 
 | Repository Name | Primary Paradigm | Core Responsibility | Key Invariants |
 | :--- | :--- | :--- | :--- |
-| `ed-state-client` | **Pull / Synchronous Sampling** | Ingest stream $\to$ Invariant Gate $\to$ Pure State Reducers $\to$ In-Memory RAM Projections | Zero async user callbacks; read operations take nanoseconds; pure functional reducers. |
-| `ed-event-client` | **Push / Reactive Dispatch** | Ingest stream $\to$ Filter/Validate $\to$ Asynchronous Pub/Sub Fanout | Zero state retention; fire-and-forget concurrency; slowest listener cannot delay stream. |
-| `ed-fleet-sdk` *(or `ed-client-facade`)* | **Composition / Ergonomic UX** | Wires state, events, and domain services into a cohesive, namespaced developer control plane | Enforces The Ordering Law; namespaces sub-contexts (`client.state`, `client.events`). |
+| `ed-state-client` | **Pull / Synchronous Sampling** | Ingest stream $\to$ Invariant Gate $\to$ Pure State Reducers $\to$ In-Memory RAM Projections | Zero async user callbacks; read operations take nanoseconds; pure functional reducers; immutable dataclass projections. |
+| `ed-event-client` | **Push / Reactive Dispatch** | Ingest stream $\to$ Filter/Validate $\to$ Asynchronous Pub/Sub Fanout | Zero state retention; fire-and-forget concurrency; slowest listener cannot delay stream; no coordinate/loadout memory footprint. |
 
 ---
 
@@ -90,8 +83,19 @@ ed-state-client/
 └── tests/
 ```
 
+#### Consumer Code Recipe
+```python
+from ed_state_client import StateClient
+
+async with StateClient(url="http://localhost:8080/api/v1") as client:
+    while True:
+        # Instant synchronous read directly from RAM (nanoseconds)
+        print(f"System: {client.location.star_system}, Docked: {client.location.docked}")
+        await asyncio.sleep(0.5)
+```
+
 #### Key Concepts Covered
-1. **Pure Reducer State Machines:** State transitions are isolated, deterministic functions with zero side effects.
+1. **Pure Reducer State Machines:** State transitions are isolated, deterministic functions with zero side effects ($S_{t+1} = \text{reduce}(S_t, E)$).
 2. **Physical Invariant Enforcement:** Dropping corrupted or impossible telemetry packets prior to state mutation.
 3. **Nanosecond In-Memory State Sampling:** Reading local RAM variables directly inside high-frequency game loops (60 FPS / 16ms) without async overhead.
 
@@ -125,6 +129,24 @@ ed-event-client/
 └── tests/
 ```
 
+#### Consumer Code Recipe
+```python
+from ed_event_client import EventClient
+from ed_models.events import FSDJump, UnderAttack
+
+client = EventClient(url="http://localhost:8080/api/v1")
+
+@client.on(FSDJump)
+async def handle_jump(event: FSDJump) -> None:
+    print(f"Jumped to: {event.star_system}")
+
+@client.on(UnderAttack)
+def handle_combat(event: UnderAttack) -> None:
+    play_siren()
+
+await client.start()
+```
+
 #### Key Concepts Covered
 1. **Observer Decoupling:** Event producers and external consumer handlers have zero direct knowledge of each other.
 2. **Fire-and-Forget Concurrency:** User listeners are scheduled via `asyncio.create_task()`, preventing slow consumer handlers from blocking network stream ingestion.
@@ -132,73 +154,24 @@ ed-event-client/
 
 ---
 
-### C. Repository 3: `ed-fleet-sdk` (Composite Facade Control Plane)
-
-* **Repository Identity:** `github.com/mnaatjes/ed-fleet-sdk` *(Evolution of `ed-fleet-client`)*
-* **Target Audience:** General application developers building full-featured companion applications who want both ambient state and reactive events in a unified SDK.
-* **Scope & Boundaries:**
-  * **Strictly In-Scope:** Composition root wiring `ed-state-client` and `ed-event-client` over a single shared connection transport; enforcing the Ordering Law; namespacing sub-contexts (`client.state`, `client.events`, `client.services`); companion snapshot hydration.
-  * **Strictly Out-of-Scope:** Low-level parsing of raw wire formats or re-implementing reducer logic.
-
-#### Directory Topology
-```
-ed-fleet-sdk/
-├── pyproject.toml
-├── src/
-│   └── ed_fleet_sdk/
-│       ├── __init__.py                     # Exports EliteDangerousClient
-│       ├── client.py                       # Unified facade root
-│       ├── context/
-│       │   ├── state_context.py            # client.state namespace wrapper
-│       │   ├── event_context.py            # client.events namespace wrapper
-│       │   └── service_context.py          # client.services namespace wrapper
-│       ├── coordinator.py                  # Pipeline driver enforcing The Ordering Law
-│       └── bootstrap/
-│           └── container.py                # Dependency injection wiring sub-clients
-└── tests/
-```
-
-#### Usage Syntax in Consumer Applications
-```python
-async with EliteDangerousClient() as client:
-    # 1. State Context (Pull / In-Memory Reducers)
-    current_system = client.state.location.star_system
-    fuel_level = client.state.ship.fuel_main
-
-    # 2. Event Context (Push / Reactive Bus)
-    @client.events.on(FSDJump)
-    async def on_jump(event: FSDJump) -> None:
-        print(f"Approaching: {event.star_system}")
-
-    # 3. Domain Services Context (Calculations)
-    metrics = client.services.orbital.calculate(body="Earth")
-```
-
-#### Key Concepts Covered
-1. **The Ordering Law Orchestration:** The SDK guarantees that when a telemetry frame arrives, `ed-state-client` synchronously reduces state *before* `ed-event-client` dispatches the event to user listeners.
-2. **Explicit Namespaced Architecture:** Context boundaries prevent conceptual conflation by separating state sampling from event pub/sub.
-3. **Shared Transport Efficiency:** Both sub-clients tap into a single, shared multiplexed telemetry transport connection to eliminate duplicated network bandwidth.
-
----
-
 ## 4. Consequences and Trade-Offs
 
 ### Positive Consequences
-* **Architectural Clarity:** Eradicates cognitive confusion between state reducers and the event bus.
+* **Architectural & Cognitive Clarity:** Completely eradicates confusion between state reducers and the event bus by giving each its own discrete package and clean mental model.
 * **Zero Overhead for Single-Purpose Apps:** Cockpit HUDs can depend solely on `ed-state-client` without pulling in event bus dispatchers. Notification bots can depend solely on `ed-event-client` without allocating state projection trees.
-* **Granular Versioning:** Changes to state reduction logic (e.g. tracking new inventory models) do not force new releases of the event bus or domain services.
-* **Hexagonal Purity:** Strict enforcement of boundaries prevents accidental cross-contamination between state models and event listeners.
+* **Independent Testability & Verification:** Each repository can establish isolated unit, integration, and performance test suites without mocking or coordinating cross-paradigm behavior.
+* **Focused Release Cadence:** Changes to state reduction logic (e.g. tracking new inventory models) do not trigger new releases or breaking changes for event-streaming consumers.
 
-### Negative Consequences and Mitigations
-* **Multi-Repository Maintenance Overhead:** Requires maintaining multiple `pyproject.toml` configurations, release pipelines, and dependency trees.
-  * *Mitigation:* Can initially be developed as a Python monorepo with multiple independent editable packages under `packages/` before extracting to individual Git repositories.
-* **Slightly More Verbose Facade Syntax:** Requires accessing `client.state.location` instead of the legacy `client.location`.
-  * *Mitigation:* Provide backward-compatible `@property` aliases on `EliteDangerousClient` with deprecation notices.
+### Deferred Concerns: High-Level Facade SDK
+* Composing a unified facade SDK (e.g. `ed-fleet-sdk` or `EliteDangerousClient`) that binds both state and events under a single connection is explicitly deferred.
+* Attempting facade composition prior to proving the operational boundaries of `ed-state-client` and `ed-event-client` creates premature coupling.
+* Once both client libraries are independently verified, a composite facade can be evaluated as an optional orchestration layer.
 
 ---
 
 ## 5. Next Steps for Decision Finalization
 
-1. Review and refine the draft ADR specifications with team stakeholders.
-2. Determine whether to maintain this structure as independent Git repositories or as a unified workspace monorepo (`uv workspaces` or similar).
-3. If approved, draft migration milestones in the project roadmap.
+1. Review and refine the dual-repository specifications with stakeholders.
+2. Complete testing and stabilization of existing state reduction and event dispatch routines in the current codebase.
+3. Establish repository infrastructure and CI pipelines for `ed-state-client` and `ed-event-client`.
+4. Migrate code modules into their respective repositories.
